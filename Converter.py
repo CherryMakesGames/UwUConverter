@@ -80,8 +80,53 @@ file_types = {
         ("convert to audio ogg", "Convert To Audio OGG", "OGG")
     ],
     # images
+    ".png": [
+        ()
+    ],
+    ".jpg": [
 
+    ],
+    ".jpeg": [
+
+    ],
+    ".webp": [
+
+    ],
+    ".ico": [
+
+    ],
     # documents
+    ".pdf": [
+
+    ],
+    ".docx": [
+
+    ],
+    ".txt": [
+
+    ],
+    ".odt": [
+
+    ],
+    ".doc": [
+
+    ],
+    # excel etc.
+    ".xlsx": [
+
+    ],
+    ".xls": [
+
+    ],
+    ".ods": [
+
+    ],
+    ".csv": [
+
+    ],
+    ".xlsb": [
+
+    ]
 }
 
 av.logging.set_level(av.logging.VERBOSE)
@@ -93,24 +138,13 @@ def ConvertFile(file_path, convert_type):
     
     try:     
         match convert_type.lower():
-            case "mp4" | "mkv" | "webm" | "mov" | "avi":
-                stream_map = {}
+            case "mp4" | "mkv" | "mov" :
+                Remux(input_file, output_file)
+                pass
+            case "webm":
 
-                for in_stream in input_file.streams:
-                    if in_stream.type not in ("video", "audio"):
-                        continue    
-                    out_stream = output_file.add_stream_from_template(in_stream)
-                    stream_map[in_stream.index] = out_stream
-
-                for packet in input_file.demux():
-                    if packet.dts is None:
-                        continue
-
-                    if packet.stream.index not in stream_map:
-                        continue
-
-                    packet.stream = stream_map[packet.stream.index]
-                    output_file.mux(packet)
+                pass
+            case "avi":
                 pass
             case "mp3" | "wav" | "flac" | "ogg":
                 stream_map = {}
@@ -136,6 +170,66 @@ def ConvertFile(file_path, convert_type):
     finally:
         input_file.close()
         output_file.close()
+
+def Remux(input_file, output_file):
+    stream_map = {}
+
+    for in_stream in input_file.streams:
+        if in_stream.type not in ("video", "audio"):
+            continue
+
+        out_stream = output_file.add_stream_from_template(in_stream)
+        stream_map[in_stream.index] = out_stream
+
+    for packet in input_file.demux():
+        if packet.dts is None:
+            continue
+
+        if packet.stream.index not in stream_map:
+            continue
+
+        packet.stream = stream_map[packet.stream.index]
+        output_file.mux(packet)
+
+def Remux(input_file, output_file):
+    stream_map = {}
+
+    for in_stream in input_file.streams:
+        if in_stream.type not in ("video", "audio"):
+            continue
+
+        out_stream = output_file.add_stream_from_template(in_stream)
+        stream_map[in_stream.index] = out_stream
+
+    for packet in input_file.demux():
+        if packet.dts is None:
+            continue
+
+        if packet.stream.index not in stream_map:
+            continue
+
+        packet.stream = stream_map[packet.stream.index]
+        output_file.mux(packet)
+
+def RemuxAudio(input_file, output_file):
+    stream_map = {}
+
+    for in_stream in input_file.streams:
+        if in_stream.type not in ("audio"):
+            continue
+
+        out_stream = output_file.add_stream_from_template(in_stream)
+        stream_map[in_stream.index] = out_stream
+
+    for packet in input_file.demux():
+        if packet.dts is None:
+            continue
+
+        if packet.stream.index not in stream_map:
+            continue
+
+        packet.stream = stream_map[packet.stream.index]
+        output_file.mux(packet)
 
 if __name__ == "__main__":
     try:
