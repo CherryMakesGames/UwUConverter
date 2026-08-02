@@ -3,3 +3,4 @@ dist
 *.spec
 winregistry
 __pycache__
+.vscode
