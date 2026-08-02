@@ -74,11 +74,15 @@ Available output options include:
 
 RAW is input-only. The program does not convert regular images into RAW files.
 
-## Installation
+# Installation
 
-Newest stable version in releases. It will download all necessary dependencies automatically. If you want to manually build the project use the guide below
+Newest stable version in [releases](https://github.com/CherryMakesGames/UwUConverter/releases). It will download all necessary dependencies automatically. If you want to manually build the project use the guide below
+
+#
 
 # Manual Installation
+
+If you like that kind of stuff
 
 ## Requirements
 
