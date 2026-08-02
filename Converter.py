@@ -4,6 +4,7 @@ import pathlib
 import av
 import make_key
 import traceback
+from PIL import Image
 
 file_types = {
     # video files
@@ -81,19 +82,39 @@ file_types = {
     ],
     # images
     ".png": [
-        
+        ("convert to jpg", "Convert To JPG", "JPG"),
+        ("convert to jpeg", "Convert To JPEG", "JPEG"),
+        ("convert to webp", "Convert To WEBP", "WEBP"),
+        ("convert to ico", "Convert To ICO", "ICO"),
+        ("convert to pdf", "Convert To PDF", "PDF")
     ],
     ".jpg": [
-
+        ("convert to png", "Convert To PNG", "PNG"),
+        ("convert to jpeg", "Convert To JPEG", "JPEG"),
+        ("convert to webp", "Convert To WEBP", "WEBP"),
+        ("convert to ico", "Convert To ICO", "ICO"),
+        ("convert to pdf", "Convert To PDF", "PDF")
     ],
     ".jpeg": [
-
+        ("convert to png", "Convert To PNG", "PNG"),
+        ("convert to jpg", "Convert To JPG", "JPG"),
+        ("convert to webp", "Convert To WEBP", "WEBP"),
+        ("convert to ico", "Convert To ICO", "ICO"),
+        ("convert to pdf", "Convert To PDF", "PDF")
     ],
     ".webp": [
-
+        ("convert to png", "Convert To PNG", "PNG"),
+        ("convert to jpg", "Convert To JPG", "JPG"),
+        ("convert to jpeg", "Convert To JPEG", "JPEG"),
+        ("convert to ico", "Convert To ICO", "ICO"),
+        ("convert to pdf", "Convert To PDF", "PDF")
     ],
     ".ico": [
-
+        ("convert to png", "Convert To PNG", "PNG"),
+        ("convert to jpg", "Convert To JPG", "JPG"),
+        ("convert to jpeg", "Convert To JPEG", "JPEG"),
+        ("convert to webp", "Convert To WEBP", "WEBP"),
+        ("convert to pdf", "Convert To PDF", "PDF")
     ],
     # documents
     ".pdf": [
@@ -132,40 +153,97 @@ file_types = {
 av.logging.set_level(av.logging.VERBOSE)
 
 def ConvertFile(file_path, convert_type):
-    input_file = av.open(file_path)
+    
     output_file_pre_suffix = file_path.removesuffix(pathlib.Path(file_path).suffix)
-    output_file = av.open(output_file_pre_suffix + '.' + convert_type, 'w')
+    output_file_path = output_file_pre_suffix + '.' + convert_type
     
     try:     
         match convert_type.lower():
+            
+            # video file conversions
+            
             case "mp4" | "mkv" | "mov" :
+                input_file = av.open(file_path)
+                output_file = av.open(output_file_path, 'w')
                 Remux(input_file, output_file)
                 pass
             case "webm":
+                input_file = av.open(file_path)
+                output_file = av.open(output_file_path, 'w')
                 Transcode(input_file, output_file, "vp8", "libopus")
                 pass
             case "avi":
+                input_file = av.open(file_path)
+                output_file = av.open(output_file_path, 'w')
                 Transcode(input_file, output_file, "libsvtav1", "libmp3lame")
                 pass
+            
+            # audio file conversions
+            
             case "mp3" | "wav" | "flac" | "ogg":
-                stream_map = {}
+                input_file = av.open(file_path)
+                output_file = av.open(output_file_path, "w")
 
-                for in_stream in input_file.streams:
-                    if in_stream.type not in ("audio"):
-                        continue    
-                    out_stream = output_file.add_stream_from_template(in_stream)
-                    stream_map[in_stream.index] = out_stream
+                audio_codecs = {
+                    "mp3": "libmp3lame",
+                    "wav": "pcm_s16le",
+                    "flac": "flac",
+                    "ogg": "vorbis"
+                }
 
-                for packet in input_file.demux():
-                    if packet.dts is None:
-                        continue
+                TranscodeAudio(
+                    input_file,
+                    output_file,
+                    audio_codecs[convert_type.lower()]
+                )
+            
+            # image file conversions
+            
+            case "png" | "jpg" | "jpeg" | "webp" | "ico" | "pdf":
+                with Image.open(file_path) as image:
 
-                    if packet.stream.index not in stream_map:
-                        continue
+                    if convert_type.lower() in ("jpg", "jpeg"):
+                        if image.mode in ("RGBA", "LA"):
+                            background = Image.new(
+                                "RGB",
+                                image.size,
+                                (255, 255, 255)
+                            )
 
-                    packet.stream = stream_map[packet.stream.index]
-                    output_file.mux(packet)
-                pass
+                            alpha = image.getchannel("A")
+
+                            background.paste(
+                                image,
+                                mask=alpha
+                            )
+
+                            image = background
+
+                        elif image.mode != "RGB":
+                            image = image.convert("RGB")
+
+                    elif convert_type.lower() == "pdf":
+                        if image.mode in ("RGBA", "LA", "P"):
+                            background = Image.new(
+                                "RGB",
+                                image.size,
+                                (255, 255, 255)
+                            )
+
+                            if image.mode == "P":
+                                image = image.convert("RGBA")
+
+                            if image.mode in ("RGBA", "LA"):
+                                background.paste(
+                                    image,
+                                    mask=image.getchannel("A")
+                                )
+                                image = background
+                            else:
+                                image = image.convert("RGB")
+
+                    image.save(output_file_path)
+            
             case _:
                 pass
     finally:
@@ -231,24 +309,41 @@ def Transcode(input_file, output_file, encoderVideo, encoderAudio):
         for packet in out_stream.encode():
             output_file.mux(packet)
 
-def RemuxAudio(input_file, output_file):
-    stream_map = {}
+def TranscodeAudio(input_file, output_file, encoder):
+    input_stream = next(
+        (
+            stream
+            for stream in input_file.streams
+            if stream.type == "audio"
+        ),
+        None
+    )
 
-    for in_stream in input_file.streams:
-        if in_stream.type not in ("audio"):
-            continue
+    if input_stream is None:
+        raise ValueError("The input file contains no audio stream")
 
-        out_stream = output_file.add_stream_from_template(in_stream)
-        stream_map[in_stream.index] = out_stream
+    sample_rate = input_stream.codec_context.sample_rate or 48000
 
-    for packet in input_file.demux():
-        if packet.dts is None:
-            continue
+    output_stream = output_file.add_stream(
+        encoder,
+        rate=sample_rate
+    )
 
-        if packet.stream.index not in stream_map:
-            continue
+    if encoder == "libmp3lame":
+        output_stream.bit_rate = 320000
 
-        packet.stream = stream_map[packet.stream.index]
+    elif encoder == "vorbis":
+        output_stream.codec_context.options = {
+            "strict": "-2"
+        }
+        output_stream.bit_rate = 192000
+
+    for frame in input_file.decode(input_stream):
+        for packet in output_stream.encode(frame):
+            output_file.mux(packet)
+
+    # Flush remaining encoded audio
+    for packet in output_stream.encode():
         output_file.mux(packet)
 
 if __name__ == "__main__":
