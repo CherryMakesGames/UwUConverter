@@ -1,0 +1,13 @@
+- name: Inno Setup Action
+  # You may pin to the exact commit or the version.
+  # uses: Minionguyjpro/Inno-Setup-Action@ec985ef724d1fb4a05bfbc1a8e49930dc76d2b0c
+  uses: Minionguyjpro/Inno-Setup-Action@v1.2.9
+  with:
+    # Path to input .iss script file
+    path: 
+    # Extra arguments/options to include. Include the slashes for them.
+    options: # optional
+    # Set to true to download and install the latest Inno Setup from the installer URL before running.
+    install_latest: # optional, default is false
+    # Optional Inno Setup installer URL. When omitted, the latest x64 installer is discovered from GitHub Releases.
+    installer_url: # optional
