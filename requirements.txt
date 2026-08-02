@@ -2,4 +2,4 @@ av
 Pillow
 rawpy
 pdf2docx
-pyinstaller
+pyinstaller 
