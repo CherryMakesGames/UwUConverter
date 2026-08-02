@@ -81,7 +81,7 @@ file_types = {
     ],
     # images
     ".png": [
-        ()
+        
     ],
     ".jpg": [
 

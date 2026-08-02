@@ -2,3 +2,4 @@ pillow
 av
 pathlib
 traceback
+shutil
