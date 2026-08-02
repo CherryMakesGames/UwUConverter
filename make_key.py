@@ -151,13 +151,18 @@ def AddExtension(file_type, conversions):
             "Converter.py"
         )
 
-        if getattr(sys, "frozen", False):
+        if is_packaged:
             command = (
                 f'"{sys.executable}" '
                 f'"%1" '
                 f'"{convert_type}"'
             )
         else:
+            converter_script = os.path.join(
+                cwd,
+                "Converter.py"
+            )
+
             command = (
                 f'"{python_exe}" '
                 f'"{converter_script}" '
@@ -176,3 +181,15 @@ def AddExtension(file_type, conversions):
                 reg.REG_SZ,
                 command
             )
+            
+def RemoveExtensions(file_types):
+    for extension in file_types:
+        ResetExtension(extension)
+
+    if os.path.isfile(saved_icon):
+        os.remove(saved_icon)
+
+    try:
+        os.rmdir(app_folder)
+    except OSError:
+        pass

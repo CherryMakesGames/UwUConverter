@@ -414,10 +414,15 @@ def TranscodeAudio(input_file, output_file, encoder):
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) > 2:
+        if len(sys.argv) > 1 and sys.argv[1] == "--uninstall":
+            make_key.RemoveExtensions(file_types)
+
+        elif len(sys.argv) > 2:
             ConvertFile(sys.argv[1], sys.argv[2])
-        else: 
+
+        else:
             make_key.CreateExtensions(file_types)
+
     except Exception:
         traceback.print_exc()
         input("\nPress Enter to close...")

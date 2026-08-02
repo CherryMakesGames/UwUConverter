@@ -1,7 +1,5 @@
-pillow
 av
-pathlib
-traceback
-shutil
+Pillow
 rawpy
 pdf2docx
+pyinstaller
