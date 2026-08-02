@@ -3,6 +3,8 @@ import os
 import sys
 import shutil
 
+is_packaged = getattr(sys, "frozen", False)
+
 cwd = os.path.dirname(os.path.abspath(__file__))
 python_exe = sys.executable
 
@@ -23,30 +25,17 @@ icon_value = f'"{saved_icon}",0'
 
 
 def SaveIcon():
-    print("SaveIcon started")
-
-    print("LOCALAPPDATA:", os.environ.get("LOCALAPPDATA"))
-    print("App folder:", app_folder)
-
     os.makedirs(app_folder, exist_ok=True)
-
-    print("Folder exists:", os.path.isdir(app_folder))
 
     source_icon = os.path.join(
         cwd,
         "UwUConverter.ico"
     )
 
-    print("Source icon:", source_icon)
-    print("Source exists:", os.path.isfile(source_icon))
-
     shutil.copy2(
         source_icon,
         saved_icon
     )
-
-    print("Saved icon:", saved_icon)
-    print("Saved icon exists:", os.path.isfile(saved_icon))
 
 
 def CreateExtensions(file_types):
@@ -162,12 +151,19 @@ def AddExtension(file_type, conversions):
             "Converter.py"
         )
 
-        command = (
-            f'"{python_exe}" '
-            f'"{converter_script}" '
-            f'"%1" '
-            f'"{convert_type}"'
-        )
+        if getattr(sys, "frozen", False):
+            command = (
+                f'"{sys.executable}" '
+                f'"%1" '
+                f'"{convert_type}"'
+            )
+        else:
+            command = (
+                f'"{python_exe}" '
+                f'"{converter_script}" '
+                f'"%1" '
+                f'"{convert_type}"'
+            )
 
         with reg.CreateKey(
             reg.HKEY_CURRENT_USER,

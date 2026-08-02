@@ -3,3 +3,5 @@ av
 pathlib
 traceback
 shutil
+rawpy
+pdf2docx
