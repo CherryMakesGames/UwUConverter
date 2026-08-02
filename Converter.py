@@ -5,6 +5,8 @@ import av
 import make_key
 import traceback
 from PIL import Image
+import rawpy
+from pdf2docx import Converter
 
 file_types = {
     # video files
@@ -13,6 +15,7 @@ file_types = {
         ("convert to wav", "Convert To WAV", "WAV"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
         ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to opus", "Convert To OPUS", "OPUS"),
         ("convert to mkv", "Convert To MKV", "MKV"),
         ("convert to mov", "Convert To MOV", "MOV"),
         ("convert to avi", "Convert To AVI", "AVI"),
@@ -22,6 +25,7 @@ file_types = {
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
         ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to opus", "Convert To OPUS", "OPUS"),
         ("convert to wav", "Convert To WAV", "WAV"),
         ("convert to mp4", "Convert To MP4", "MP4"),
         ("convert to mov", "Convert To MOV", "MOV"),
@@ -32,6 +36,7 @@ file_types = {
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
         ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to opus", "Convert To OPUS", "OPUS"),
         ("convert to wav", "Convert To WAV", "WAV"),
         ("convert to mp4", "Convert To MP4", "MP4"),
         ("convert to avi", "Convert To AVI", "AVI"),
@@ -42,6 +47,7 @@ file_types = {
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
         ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to opus", "Convert To OPUS", "OPUS"),
         ("convert to mp4", "Convert To MP4", "MP4"),
         ("convert to wav", "Convert To WAV", "WAV"),
         ("convert to webm", "Convert To WEBM", "WEBM"),
@@ -52,6 +58,7 @@ file_types = {
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
         ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to opus", "Convert To OPUS", "OPUS"),
         ("convert to wav", "Convert To WAV", "WAV"),
         ("convert to mp4", "Convert To MP4", "MP4"),
         ("convert to avi", "Convert To AVI", "AVI"),
@@ -63,22 +70,32 @@ file_types = {
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
         ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
-        ("convert to wav", "Convert To WAV", "WAV")
+        ("convert to wav", "Convert To WAV", "WAV"),
+        ("convert to opus", "Convert To OPUS", "OPUS")
     ],
     ".wav": [
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
-        ("convert to audio ogg", "Convert To Audio OGG", "OGG")
+        ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to opus", "Convert To OPUS", "OPUS")
     ],
     ".ogg": [
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to flac", "Convert To FLAC", "FLAC"),
-        ("convert to wav", "Convert To WAV", "WAV")
+        ("convert to wav", "Convert To WAV", "WAV"),
+        ("convert to opus", "Convert To OPUS", "OPUS")
     ],
     ".flac": [
         ("convert to mp3", "Convert To MP3", "MP3"),
         ("convert to wav", "Convert To WAV", "WAV"),
-        ("convert to audio ogg", "Convert To Audio OGG", "OGG")
+        ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to opus", "Convert To OPUS", "OPUS")
+    ],
+    ".opus": [
+        ("convert to mp3", "Convert To MP3", "MP3"),
+        ("convert to wav", "Convert To WAV", "WAV"),
+        ("convert to audio ogg", "Convert To Audio OGG", "OGG"),
+        ("convert to flac", "Convert To FLAC", "FLAC"),
     ],
     # images
     ".png": [
@@ -116,21 +133,41 @@ file_types = {
         ("convert to webp", "Convert To WEBP", "WEBP"),
         ("convert to pdf", "Convert To PDF", "PDF")
     ],
+    ".raw": [
+        ("convert to png", "Convert To PNG", "PNG"),
+        ("convert to jpg", "Convert To JPG", "JPG"),
+        ("convert to jpeg", "Convert To JPEG", "JPEG"),
+        ("convert to webp", "Convert To WEBP", "WEBP"),
+        ("convert to ico", "Convert To ICO", "ICO"),
+        ("convert to pdf", "Convert To PDF", "PDF")
+    ],
     # documents
     ".pdf": [
-
+        ("convert to docx", "Convert To DOCX", "DOCXFPDF")
     ],
     ".docx": [
-
+        ("convert to pdf", "Convert To PDF", "DOCPDF"),
+        ("convert to txt", "Convert To TXT", "TXT"),
+        ("convert to odt", "Convert To ODT", "ODT"),
+        ("convert to doc", "Convert To DOC", "DOC")
     ],
     ".txt": [
-
+        ("convert to pdf", "Convert To PDF", "DOCPDF"),
+        ("convert to odt", "Convert To ODT", "ODT"),
+        ("convert to doc", "Convert To DOC", "DOC"),
+        ("convert to docx", "Convert To DOCX", "DOCX")
     ],
     ".odt": [
-
+        ("convert to pdf", "Convert To PDF", "DOCPDF"),
+        ("convert to txt", "Convert To TXT", "TXT"),
+        ("convert to doc", "Convert To DOC", "DOC"),
+        ("convert to docx", "Convert To DOCX", "DOCX")
     ],
     ".doc": [
-
+        ("convert to pdf", "Convert To PDF", "DOCPDF"),
+        ("convert to txt", "Convert To TXT", "TXT"),
+        ("convert to odt", "Convert To ODT", "ODT"),
+        ("convert to docx", "Convert To DOCX", "DOCX")
     ],
     # excel etc.
     ".xlsx": [
@@ -153,9 +190,11 @@ file_types = {
 av.logging.set_level(av.logging.VERBOSE)
 
 def ConvertFile(file_path, convert_type):
+    input_file = None
+    output_file = None
     
     output_file_pre_suffix = file_path.removesuffix(pathlib.Path(file_path).suffix)
-    output_file_path = output_file_pre_suffix + '.' + convert_type
+    output_file_path = output_file_pre_suffix + '.' + convert_type.lower()
     
     try:     
         match convert_type.lower():
@@ -180,7 +219,7 @@ def ConvertFile(file_path, convert_type):
             
             # audio file conversions
             
-            case "mp3" | "wav" | "flac" | "ogg":
+            case "mp3" | "wav" | "flac" | "ogg" | "opus":
                 input_file = av.open(file_path)
                 output_file = av.open(output_file_path, "w")
 
@@ -188,7 +227,8 @@ def ConvertFile(file_path, convert_type):
                     "mp3": "libmp3lame",
                     "wav": "pcm_s16le",
                     "flac": "flac",
-                    "ogg": "vorbis"
+                    "ogg": "vorbis",
+                    "opus": "libopus"
                 }
 
                 TranscodeAudio(
@@ -200,8 +240,14 @@ def ConvertFile(file_path, convert_type):
             # image file conversions
             
             case "png" | "jpg" | "jpeg" | "webp" | "ico" | "pdf":
-                with Image.open(file_path) as image:
+                if pathlib.Path(file_path).suffix.lower() == ".raw":
+                    with rawpy.imread(file_path) as raw_image:
+                        rgb = raw_image.postprocess()
+                        image = Image.fromarray(rgb)
+                else:
+                    image = Image.open(file_path)
 
+                try:
                     if convert_type.lower() in ("jpg", "jpeg"):
                         if image.mode in ("RGBA", "LA"):
                             background = Image.new(
@@ -243,12 +289,29 @@ def ConvertFile(file_path, convert_type):
                                 image = image.convert("RGB")
 
                     image.save(output_file_path)
+                finally:
+                    image.close()
+            
+            # document file conversions
+            
+            case "DOCXFPDF":
+                pdf_file = input_file
+                
+                docx_file = output_file_path = output_file_pre_suffix + ".pdf"
+                
+                cv = Converter(pdf_file)
+                cv.convert(docx_file)
+                cv.close()
+                pass
             
             case _:
                 pass
     finally:
-        input_file.close()
-        output_file.close()
+        if input_file is not None:
+            input_file.close()
+
+        if output_file is not None:
+            output_file.close()
 
 def Remux(input_file, output_file):
     stream_map = {}
@@ -336,6 +399,9 @@ def TranscodeAudio(input_file, output_file, encoder):
         output_stream.codec_context.options = {
             "strict": "-2"
         }
+        output_stream.bit_rate = 192000
+
+    elif encoder == "libopus":
         output_stream.bit_rate = 192000
 
     for frame in input_file.decode(input_stream):
