@@ -4,3 +4,4 @@ dist
 winregistry
 __pycache__
 .vscode
+installer-output

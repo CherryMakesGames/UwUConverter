@@ -26,12 +26,15 @@ WizardStyle=modern
 [Files]
 Source: "dist\UwUConverter.exe"; DestDir: "{app}"; Flags: ignoreversion
 
+[Tasks]
+Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+
 [Icons]
 Name: "{group}\UwUConverter"; Filename: "{app}\{#MyAppExeName}"
 Name: "{userdesktop}\UwUConverter"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
-[Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
-
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Install UwUConverter context menus"; Flags: runhidden waituntilterminated
+
+[UninstallRun]
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--uninstall"; Flags: runhidden waituntilterminated

@@ -1,13 +1,65 @@
-- name: Inno Setup Action
-  # You may pin to the exact commit or the version.
-  # uses: Minionguyjpro/Inno-Setup-Action@ec985ef724d1fb4a05bfbc1a8e49930dc76d2b0c
-  uses: Minionguyjpro/Inno-Setup-Action@v1.2.9
-  with:
-    # Path to input .iss script file
-    path: 
-    # Extra arguments/options to include. Include the slashes for them.
-    options: # optional
-    # Set to true to download and install the latest Inno Setup from the installer URL before running.
-    install_latest: # optional, default is false
-    # Optional Inno Setup installer URL. When omitted, the latest x64 installer is discovered from GitHub Releases.
-    installer_url: # optional
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller av pillow rawpy pdf2docx
+
+      - name: Build UwUConverter
+        run: |
+          pyinstaller --clean --noconfirm --onefile `
+            --name UwUConverter `
+            --icon UwUConverter.ico `
+            --add-data "UwUConverter.ico:." `
+            Converter.py
+
+      - name: Verify executable
+        run: |
+          if (!(Test-Path "dist\UwUConverter.exe")) {
+            throw "PyInstaller did not create dist\UwUConverter.exe"
+          }
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer.iss"
+
+      - name: Verify installer
+        run: |
+          if (!(Test-Path "installer-output\UwUConverter-Setup.exe")) {
+            throw "Inno Setup did not create the installer"
+          }
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: UwUConverter-Windows-Installer
+          path: installer-output/UwUConverter-Setup.exe
+          if-no-files-found: error
