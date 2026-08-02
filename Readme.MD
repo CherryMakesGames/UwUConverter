@@ -74,6 +74,12 @@ Available output options include:
 
 RAW is input-only. The program does not convert regular images into RAW files.
 
+## Installation
+
+Newest stable version in releases. It will download all necessary dependencies automatically. If you want to manually build the project use the guide below
+
+# Manual Installation
+
 ## Requirements
 
 - Windows 10 or Windows 11
