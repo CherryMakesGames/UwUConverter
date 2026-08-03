@@ -5,6 +5,9 @@
 
 [Setup]
 AppId={{7B6F193A-8D9C-42E1-81E8-E9E85C796940}
+Uninstallable=yes
+CreateUninstallRegKey=yes
+UninstallDisplayName=UwUConverter
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -24,7 +27,7 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Files]
-Source: "dist\UwUConverter.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\UwUConverter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
