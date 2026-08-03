@@ -2,4 +2,11 @@ av
 Pillow
 rawpy
 pdf2docx
-pyinstaller 
+python-docx
+odfpy
+reportlab
+pandas
+openpyxl
+xlrd
+pyxlsb
+xlwt
