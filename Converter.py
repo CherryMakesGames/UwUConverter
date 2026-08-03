@@ -812,8 +812,13 @@ def TranscodeAudio(input_file, output_file, encoder):
         output_file.mux(packet)
 
 if __name__ == "__main__":
+    is_uninstalling = (
+        len(sys.argv) > 1
+        and sys.argv[1] == "--uninstall"
+    )
+
     try:
-        if len(sys.argv) > 1 and sys.argv[1] == "--uninstall":
+        if is_uninstalling:
             make_key.RemoveExtensions(file_types)
 
         elif len(sys.argv) > 2:
@@ -824,4 +829,6 @@ if __name__ == "__main__":
 
     except Exception:
         traceback.print_exc()
-        input("\nPress Enter to close...")
+
+        if not is_uninstalling:
+            input("\nPress Enter to close...")
