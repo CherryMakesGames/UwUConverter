@@ -37,4 +37,7 @@ Name: "{userdesktop}\UwUConverter"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Filename: "{app}\{#MyAppExeName}"; Description: "Install UwUConverter context menus"; Flags: runhidden waituntilterminated
 
 [UninstallRun]
-Filename: "{app}\{#MyAppExeName}"; Parameters: "--uninstall"; Flags: runhidden waituntilterminated
+Filename: "{app}\{#MyAppExeName}"; \
+    Parameters: "--uninstall"; \
+    Flags: waituntilterminated runhidden skipifdoesntexist; \
+    RunOnceId: "RemoveUwUConverterMenus"

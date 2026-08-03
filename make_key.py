@@ -184,12 +184,14 @@ def AddExtension(file_type, conversions):
             
 def RemoveExtensions(file_types):
     for extension in file_types:
+        print("Removing menu for:", extension)
         ResetExtension(extension)
 
     if os.path.isfile(saved_icon):
         os.remove(saved_icon)
 
-    try:
-        os.rmdir(app_folder)
-    except OSError:
-        pass
+    if os.path.isdir(app_folder):
+        try:
+            os.rmdir(app_folder)
+        except OSError:
+            pass
