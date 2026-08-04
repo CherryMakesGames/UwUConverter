@@ -1,8 +1,15 @@
 # UwUConverter
 
+![nya~](./Readme%20Images/banner.png)
+
 UwUConverter is a Windows file converter written in Python. It adds file conversion options directly to the File Explorer right-click menu, so supported files can be converted without opening a separate application.
 
 The project currently supports video, audio, images, camera RAW files, documents, and spreadsheets.
+
+## Usage Preview
+
+![cOwOnvert Pwetty Pwease](./Readme%20Images/Screenshot%202026-08-04%20155327.png)
+![cOwOmpress Pwease](./Readme%20Images/Screenshot%202026-08-04%20155443.png)
 
 ## Download
 
@@ -29,6 +36,7 @@ A release build is the recommended option for most users because Python and the 
 - Converts PDF files to DOCX through pdf2docx
 - Converts DOCX, ODT, and TXT files without requiring LibreOffice
 - Converts common spreadsheet formats without requiring Microsoft Excel or LibreOffice
+- Compresses images and video in either lossless versions or by a percentage decrease
 - Installs and removes its own context-menu entries
 - Prints complete error tracebacks when a conversion fails
 
