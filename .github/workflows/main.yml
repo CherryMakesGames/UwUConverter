@@ -31,11 +31,7 @@ jobs:
 
       - name: Build UwUConverter
         run: |
-          pyinstaller --clean --noconfirm --onefile `
-            --name UwUConverter `
-            --icon UwUConverter.ico `
-            --add-data "UwUConverter.ico:." `
-            Converter.py
+          PyInstaller --onedir --name UwUConverter --icon UwUConverter.ico --add-data "UwUConverter.ico;." Converter.py
 
       - name: Verify executable
         run: |
