@@ -10,3 +10,4 @@ openpyxl
 xlrd
 pyxlsb
 xlwt
+pyinstaller
