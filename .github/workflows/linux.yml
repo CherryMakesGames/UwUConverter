@@ -1,0 +1,63 @@
+name: Build Linux Version
+
+on:
+  workflow_dispatch:
+
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libgl1 \
+            libglib2.0-0
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build UwUConverter
+        run: |
+          pyinstaller \
+            --clean \
+            --noconfirm \
+            --onedir \
+            --name UwUConverter \
+            --add-data "UwUConverter.ico:." \
+            Converter.py
+
+      - name: Verify executable
+        run: |
+          test -f dist/UwUConverter/UwUConverter
+          chmod +x dist/UwUConverter/UwUConverter
+
+      - name: Create archive
+        run: |
+          cd dist
+          tar -czf UwUConverter-Linux-x64.tar.gz UwUConverter
+
+      - name: Upload Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: UwUConverter-Linux-x64
+          path: dist/UwUConverter-Linux-x64.tar.gz
+          if-no-files-found: error
