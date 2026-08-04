@@ -5,3 +5,4 @@ winregistry
 __pycache__
 .vscode
 installer-output
+local.iss
