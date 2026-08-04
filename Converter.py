@@ -4,10 +4,14 @@ import traceback
 
 import av
 
-import make_key
+import platform_menu
 from audio_converter import convert_audio
-from compression import compress_video_lossless, compress_video_by_percent, compress_image_lossless, compress_image_by_percent
-
+from compression import (
+    compress_video_lossless,
+    compress_video_by_percent,
+    compress_image_lossless,
+    compress_image_by_percent
+)
 from document_converter import convert_document
 from file_types import file_types
 from image_converter import convert_image
@@ -46,6 +50,7 @@ IMAGE_OUTPUTS = {
 
 def ConvertFile(file_path, convert_type):
     action = convert_type.lower()
+
     input_extension = (
         pathlib.Path(file_path).suffix.lower()
     )
@@ -73,7 +78,14 @@ def ConvertFile(file_path, convert_type):
     if (
         action in IMAGE_OUTPUTS
         and input_extension
-        in {".png", ".jpg", ".jpeg", ".webp", ".ico", ".raw"}
+        in {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".ico",
+            ".raw"
+        }
     ):
         convert_image(
             file_path,
@@ -81,8 +93,6 @@ def ConvertFile(file_path, convert_type):
             action
         )
         return
-
-        # video compression
 
     if action == "video_compress_lossless":
         compress_video_lossless(file_path)
@@ -108,8 +118,6 @@ def ConvertFile(file_path, convert_type):
             75
         )
         return
-
-    # image compression
 
     if action == "image_compress_lossless":
         compress_image_lossless(file_path)
@@ -206,7 +214,9 @@ if __name__ == "__main__":
 
     try:
         if is_uninstalling:
-            make_key.RemoveExtensions(file_types)
+            platform_menu.RemoveExtensions(
+                file_types
+            )
 
         elif len(sys.argv) > 2:
             ConvertFile(
@@ -215,7 +225,9 @@ if __name__ == "__main__":
             )
 
         else:
-            make_key.CreateExtensions(file_types)
+            platform_menu.CreateExtensions(
+                file_types
+            )
 
     except Exception:
         traceback.print_exc()
