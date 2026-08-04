@@ -83,6 +83,88 @@ def ResetExtension(file_type):
     )
 
 
+def CreateCommand(command_path, convert_type):
+    if is_packaged:
+        command = (
+            f'"{sys.executable}" '
+            f'"%1" '
+            f'"{convert_type}"'
+        )
+    else:
+        converter_script = os.path.join(
+            cwd,
+            "Converter.py"
+        )
+
+        command = (
+            f'"{python_exe}" '
+            f'"{converter_script}" '
+            f'"%1" '
+            f'"{convert_type}"'
+        )
+
+    with reg.CreateKey(
+        reg.HKEY_CURRENT_USER,
+        command_path
+    ) as command_key:
+        reg.SetValueEx(
+            command_key,
+            "",
+            0,
+            reg.REG_SZ,
+            command
+        )
+
+
+def CreateMenuItems(parent_path, items):
+    for item_id, menu_text, action in items:
+        item_path = (
+            parent_path
+            + r"\\shell\\"
+            + item_id
+        )
+
+        with reg.CreateKey(
+            reg.HKEY_CURRENT_USER,
+            item_path
+        ) as item_key:
+            reg.SetValueEx(
+                item_key,
+                "MUIVerb",
+                0,
+                reg.REG_SZ,
+                menu_text
+            )
+
+            reg.SetValueEx(
+                item_key,
+                "Icon",
+                0,
+                reg.REG_SZ,
+                icon_value
+            )
+
+            if isinstance(action, list):
+                reg.SetValueEx(
+                    item_key,
+                    "SubCommands",
+                    0,
+                    reg.REG_SZ,
+                    ""
+                )
+
+        if isinstance(action, list):
+            CreateMenuItems(
+                item_path,
+                action
+            )
+        else:
+            CreateCommand(
+                item_path + r"\\command",
+                action
+            )
+
+
 def AddExtension(file_type, conversions):
     key_path = path_start + file_type + name
 
@@ -114,84 +196,20 @@ def AddExtension(file_type, conversions):
             ""
         )
 
-    for conversion_id, menu_text, convert_type in conversions:
-        conversion_path = (
-            key_path
-            + r"\\shell\\"
-            + conversion_id
-        )
+    CreateMenuItems(
+        key_path,
+        conversions
+    )
 
-        with reg.CreateKey(
-            reg.HKEY_CURRENT_USER,
-            conversion_path
-        ) as conversion_key:
-            reg.SetValueEx(
-                conversion_key,
-                "MUIVerb",
-                0,
-                reg.REG_SZ,
-                menu_text
-            )
 
-            reg.SetValueEx(
-                conversion_key,
-                "Icon",
-                0,
-                reg.REG_SZ,
-                icon_value
-            )
-
-        command_path = (
-            conversion_path
-            + r"\\command"
-        )
-
-        converter_script = os.path.join(
-            cwd,
-            "Converter.py"
-        )
-
-        if is_packaged:
-            command = (
-                f'"{sys.executable}" '
-                f'"%1" '
-                f'"{convert_type}"'
-            )
-        else:
-            converter_script = os.path.join(
-                cwd,
-                "Converter.py"
-            )
-
-            command = (
-                f'"{python_exe}" '
-                f'"{converter_script}" '
-                f'"%1" '
-                f'"{convert_type}"'
-            )
-
-        with reg.CreateKey(
-            reg.HKEY_CURRENT_USER,
-            command_path
-        ) as command_key:
-            reg.SetValueEx(
-                command_key,
-                "",
-                0,
-                reg.REG_SZ,
-                command
-            )
-            
 def RemoveExtensions(file_types):
     for extension in file_types:
-        print("Removing menu for:", extension)
         ResetExtension(extension)
 
     if os.path.isfile(saved_icon):
         os.remove(saved_icon)
 
-    if os.path.isdir(app_folder):
-        try:
-            os.rmdir(app_folder)
-        except OSError:
-            pass
+    try:
+        os.rmdir(app_folder)
+    except OSError:
+        pass
