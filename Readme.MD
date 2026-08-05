@@ -2,9 +2,9 @@
 
 ![nya~](./Readme%20Images/banner.png)
 
-UwUConverter is a Windows file converter written in Python. It adds file conversion options directly to the File Explorer right-click menu, so supported files can be converted without opening a separate application.
+UwUConverter is a local file converter written in Python. It adds conversion and compression options directly to the file manager's right-click menu, so supported files can be processed without opening a separate application.
 
-The project currently supports video, audio, images, camera RAW files, documents, and spreadsheets.
+Windows is currently the most complete version. Experimental Linux support is available for Nautilus, Nemo, Caja, and Dolphin.
 
 ## Usage Preview
 
@@ -13,32 +13,63 @@ The project currently supports video, audio, images, camera RAW files, documents
 
 ## Download
 
-Prebuilt Windows releases are available on the project's GitHub Releases page.
+### Windows
 
-Download the latest:
+Download the latest installer from the GitHub Releases page:
 
 ```text
 UwUConverter-Setup.exe
 ```
 
-The installer places UwUConverter in a permanent application folder, registers the File Explorer context-menu entries, installs the icon, and adds an uninstaller.
+The Inno Setup installer places UwUConverter in a permanent folder, registers the File Explorer menus, installs the icon, and adds uninstall support.
 
-A release build is the recommended option for most users because Python and the project's packages do not need to be installed manually.
+### Linux
+
+Linux releases are currently experimental and distributed as a `.tar.gz` archive containing the PyInstaller folder.
+
+```bash
+tar -xzf UwUConverter-Linux-x64.tar.gz
+chmod +x UwUConverter/UwUConverter
+./UwUConverter/UwUConverter
+```
+
+Running UwUConverter without conversion arguments installs or refreshes the supported file-manager integrations.
 
 ## Features
 
-- Adds a `Convert With UwUConverter ^-^` submenu to Windows File Explorer
-- Shows different conversion options for each supported extension
-- Supports media remuxing when the existing codecs are compatible
+- Adds conversion options directly to the right-click menu
+- Groups music, video, image, document, spreadsheet, and compression actions
+- Supports media remuxing where compatible
 - Supports video and audio transcoding through PyAV and FFmpeg
 - Converts images through Pillow
 - Converts supported camera RAW images through rawpy
 - Converts PDF files to DOCX through pdf2docx
-- Converts DOCX, ODT, and TXT files without requiring LibreOffice
-- Converts common spreadsheet formats without requiring Microsoft Excel or LibreOffice
-- Compresses images and video in either lossless versions or by a percentage decrease
-- Installs and removes its own context-menu entries
-- Prints complete error tracebacks when a conversion fails
+- Converts DOCX, ODT, and TXT without LibreOffice
+- Converts common spreadsheet formats without Microsoft Excel or LibreOffice
+- Provides lossless, 25%, 50%, and 75% compression options
+- Preserves the original video container during compression
+- Installs and removes its own Windows and Linux menu integrations
+- Uses separate converter modules for easier maintenance
+- Prints full tracebacks when a conversion fails
+
+## Compression
+
+UwUConverter currently provides:
+
+- Lossless optimization
+- Compress by 25%
+- Compress by 50%
+- Compress by 75%
+
+The percentage describes the intended reduction from the original size:
+
+```text
+25% compression -> aims for about 75% of the original size
+50% compression -> aims for about 50% of the original size
+75% compression -> aims for about 25% of the original size
+```
+
+Exact results vary. Codecs, metadata, container overhead, image contents, and existing compression can all affect the final size. Lossless optimization may produce almost no reduction when the source is already efficiently encoded.
 
 ## Supported formats
 
@@ -50,7 +81,7 @@ A release build is the recommended option for most users because Python and the 
 - AVI
 - WebM
 
-Available output options include MP4, MKV, MOV, AVI, WebM, MP3, WAV, FLAC, OGG, and OPUS.
+Outputs include MP4, MKV, MOV, AVI, WebM, MP3, WAV, FLAC, OGG, and OPUS.
 
 ### Audio input
 
@@ -60,7 +91,7 @@ Available output options include MP4, MKV, MOV, AVI, WebM, MP3, WAV, FLAC, OGG, 
 - FLAC
 - OPUS
 
-Available output options include MP3, WAV, FLAC, OGG, and OPUS.
+Outputs include MP3, WAV, FLAC, OGG, and OPUS.
 
 ### Image input
 
@@ -71,9 +102,9 @@ Available output options include MP3, WAV, FLAC, OGG, and OPUS.
 - ICO
 - RAW
 
-Available output options include PNG, JPG, JPEG, WebP, ICO, and PDF.
+Outputs include PNG, JPG, JPEG, WebP, ICO, and PDF.
 
-RAW is input-only. UwUConverter does not convert ordinary images into RAW files.
+RAW is input-only.
 
 ### Document input
 
@@ -82,13 +113,11 @@ RAW is input-only. UwUConverter does not convert ordinary images into RAW files.
 - ODT
 - TXT
 
-Available output options include PDF, DOCX, ODT, and TXT.
+Outputs include PDF, DOCX, ODT, and TXT.
 
-PDF to DOCX conversion is handled through `pdf2docx`.
+PDF-to-DOCX conversion uses `pdf2docx`. Other document conversions are mostly text-based, so complex layouts, tables, images, headers, and exact formatting may not survive.
 
-DOCX, ODT, TXT, and PDF conversions are mostly text-based. Complex formatting, images, tables, headers, footers, and exact page layouts may not be preserved.
-
-Legacy binary `.doc` files are not currently supported.
+Legacy `.doc` files are not currently supported.
 
 ### Spreadsheet input
 
@@ -100,19 +129,18 @@ Legacy binary `.doc` files are not currently supported.
 - CSV
 - TSV
 
-Available output options include XLSX, XLS, ODS, CSV, TSV, and PDF.
+Outputs include XLSX, XLS, ODS, CSV, TSV, and PDF.
 
-Google Sheets is not a local file format. Export the sheet as XLSX, ODS, CSV, or TSV before converting it.
+Spreadsheet conversions focus on cell values. Macros, formulas, charts, formatting, pivot tables, and workbook metadata may be lost.
 
-## Installing a GitHub release
+## Windows installation
 
-1. Open the project's GitHub Releases page.
-2. Download the newest `UwUConverter-Setup.exe`.
-3. Run the installer.
-4. Complete the installation.
-5. Right-click a supported file in File Explorer.
-6. Open `Convert With UwUConverter ^-^`.
-7. Select the desired output format.
+1. Download `UwUConverter-Setup.exe`.
+2. Run the installer.
+3. Complete the installation.
+4. Right-click a supported file.
+5. Open `Convert With UwUConverter ^-^`.
+6. Choose a conversion or compression action.
 
 UwUConverter is normally installed under:
 
@@ -120,308 +148,219 @@ UwUConverter is normally installed under:
 %LOCALAPPDATA%\Programs\UwUConverter
 ```
 
-Its context-menu icon is stored under:
+The context-menu icon is stored under:
 
 ```text
 %LOCALAPPDATA%\UwUConverter\icon.ico
 ```
 
-Administrator access should not normally be required because context-menu entries are registered under `HKEY_CURRENT_USER`.
+Administrator access should not normally be required.
+
+## Linux compatibility
+
+Linux support currently includes:
+
+- GNOME through Nautilus
+- Cinnamon through Nemo
+- MATE through Caja
+- KDE Plasma through Dolphin
+
+Compatibility depends on the file manager more than the desktop environment.
+
+### Nautilus, Nemo, and Caja
+
+UwUConverter generates scripts in:
+
+```text
+~/.local/share/nautilus/scripts/UwUConverter
+~/.local/share/nemo/scripts/UwUConverter
+~/.config/caja/scripts/UwUConverter
+```
+
+The actions appear in the file manager's `Scripts` submenu.
+
+### KDE Plasma and Dolphin
+
+UwUConverter generates Dolphin service menus in:
+
+```text
+~/.local/share/kio/servicemenus/
+```
+
+The actions appear in grouped UwUConverter right-click submenus.
+
+Restart Dolphin when needed:
+
+```bash
+kquitapp6 dolphin
+dolphin &
+```
+
+### Linux uninstall
+
+```bash
+./UwUConverter/UwUConverter --uninstall
+```
+
+When running from source:
+
+```bash
+python3 Converter.py --uninstall
+```
 
 ## Usage
 
-Right-click a supported file, open the UwUConverter submenu, and choose an output format.
-
-The converted file is saved next to the original file.
-
-Examples:
+The result is saved beside the original file.
 
 ```text
 video.mkv -> video.mp4
+video.mkv -> video_compressed_50.mkv
 song.wav -> song.opus
 photo.raw -> photo.png
+photo.png -> photo_compressed_25.png
 document.docx -> document.pdf
 spreadsheet.xlsx -> spreadsheet.csv
-table.tsv -> table.ods
 ```
 
-## Self-building
+## Running from source
 
-### Requirements
-
-- Windows 10 or Windows 11
-- Python 3.10 or newer
-- Inno Setup 6 for building the installer
-
-Clone or download the repository, then open PowerShell in the project folder.
-
-Install the Python packages:
+### Windows
 
 ```powershell
-pip install -r requirements_no_libreoffice.txt
-```
-
-### Run from source
-
-Keep these files in the same project folder:
-
-```text
-Converter.py
-make_key.py
-UwUConverter.ico
-requirements_no_libreoffice.txt
-```
-
-Install or refresh the context menu:
-
-```powershell
+pip install -r requirements.txt
 python .\Converter.py
 ```
 
-Run a conversion manually:
+Manual conversion:
 
 ```powershell
 python .\Converter.py "D:\Videos\example.mkv" "WEBM"
 ```
 
-Remove the registered context-menu entries:
+Remove the menu entries:
 
 ```powershell
 python .\Converter.py --uninstall
 ```
 
-### Build the executable
+### Linux
 
-Install PyInstaller:
-
-```powershell
-pip install pyinstaller
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python3 Converter.py
 ```
 
-Build a single-file executable:
+Manual conversion:
+
+```bash
+python3 Converter.py "/home/user/Videos/example.mkv" "WEBM"
+```
+
+## Building for Windows
 
 ```powershell
-pyinstaller --clean --noconfirm --onefile ^
+pyinstaller --clean --noconfirm --onedir ^
   --name UwUConverter ^
   --icon UwUConverter.ico ^
-  --add-data "UwUConverter.ico:." ^
+  --add-data "UwUConverter.ico;." ^
   Converter.py
 ```
 
-The executable will be created at:
+The executable is created at:
 
 ```text
-dist\UwUConverter.exe
+dist\UwUConverter\UwUConverter.exe
 ```
 
-Test the executable before building the installer:
-
-```powershell
-.\dist\UwUConverter.exe
-```
-
-### Build the Windows installer
-
-Install Inno Setup 6 and open `installer.iss` in Inno Setup Compiler.
-
-Compile it with:
-
-```text
-Build > Compile
-```
-
-or:
-
-```text
-Ctrl + F9
-```
-
-The installer will normally be created at:
+Compile `installer.iss` with Inno Setup 6. The installer is normally created at:
 
 ```text
 installer-output\UwUConverter-Setup.exe
 ```
 
-## GitHub Actions builds
+## Building for Linux
 
-The repository can use GitHub Actions to build release files automatically.
+Linux builds must be created on Linux.
 
-A tagged release can:
-
-1. Install the Python dependencies.
-2. Build `UwUConverter.exe` with PyInstaller.
-3. Compile `UwUConverter-Setup.exe` with Inno Setup.
-4. Upload the installer as a workflow artifact.
-5. Attach the installer to a GitHub Release.
-
-Example version tag:
-
-```powershell
-git tag v1.0.0
-git push origin v1.0.0
+```bash
+pyinstaller \
+  --clean \
+  --noconfirm \
+  --onedir \
+  --name UwUConverter \
+  --add-data "UwUConverter.ico:." \
+  Converter.py
 ```
 
-After the workflow finishes, the installer should appear on the GitHub Releases page.
-
-## Remuxing and transcoding
-
-Some video conversions use remuxing. Remuxing copies existing encoded streams into another container without re-encoding them.
-
-This is fast and does not reduce quality, but it only works when the destination container supports the source codecs.
-
-Other conversions require transcoding. Transcoding decodes and re-encodes the source using codecs supported by the selected output format.
-
-WebM output currently uses:
+The executable is created at:
 
 ```text
-Video: VP8
-Audio: Opus
+dist/UwUConverter/UwUConverter
 ```
 
-Audio-only formats use codecs such as:
+Create the release archive:
 
-```text
-MP3: libmp3lame
-WAV: pcm_s16le
-FLAC: flac
-OGG: Vorbis
-OPUS: libopus
+```bash
+cd dist
+tar -czf UwUConverter-Linux-x64.tar.gz UwUConverter
 ```
 
-## Camera RAW support
-
-Camera RAW files are processed through rawpy and converted into an RGB image before being saved through Pillow.
-
-RAW is not one universal format. Support depends on whether rawpy and LibRaw recognize the camera file.
-
-Completely headerless raw pixel data is not supported because it requires additional information such as width, height, bit depth, channel order, and pixel format.
-
-## Spreadsheet limitations
-
-Spreadsheet conversions focus on cell data.
-
-The following may be lost or changed:
-
-- Formulas
-- Macros
-- Charts
-- Pivot tables
-- Cell styling
-- Conditional formatting
-- Multiple sheets when exporting to CSV or TSV
-- Workbook-specific metadata
-
-XLSM files can be read, but VBA macros are not preserved during conversion.
-
-CSV and TSV only store one table and do not preserve workbook formatting or multiple sheets.
-
-## Document limitations
-
-Document conversions focus mainly on text content.
-
-The following may be lost or changed:
-
-- Fonts and text styling
-- Images
-- Tables
-- Headers and footers
-- Page breaks
-- Footnotes
-- Columns
-- Exact spacing and pagination
-
-PDF to DOCX results depend heavily on the structure of the original PDF.
-
-## Updating the context menu
-
-After changing `file_types`, run:
-
-```powershell
-python .\Converter.py
-```
-
-UwUConverter removes its old entries and recreates them from the current conversion list.
-
-Windows Explorer may cache old icons or menu entries. Restart Explorer when necessary:
-
-```powershell
-taskkill /f /im explorer.exe
-start explorer.exe
-```
-
-## Uninstalling
-
-When installed through `UwUConverter-Setup.exe`, use the normal Windows uninstaller.
-
-For a source installation, run:
-
-```powershell
-python .\Converter.py --uninstall
-```
+Linux support should remain marked experimental until it has been tested across multiple distributions and desktops.
 
 ## Troubleshooting
 
-### The context menu does not appear
+### A compressed file is not exactly the requested size
 
-Run UwUConverter once without conversion arguments:
+Percentage compression uses a target. It cannot guarantee an exact final byte count because codecs and containers add overhead.
 
-```powershell
-python .\Converter.py
+### A lossless file is not much smaller
+
+The original may already be efficiently compressed.
+
+### Dolphin actions do not appear
+
+```bash
+ls ~/.local/share/kio/servicemenus/uwuconverter-*.desktop
+kquitapp6 dolphin
+dolphin &
 ```
 
-For a release build:
+### Windows menus do not appear
 
-```powershell
-UwUConverter.exe
-```
-
-Then restart Windows Explorer.
-
-### The context-menu icon is missing
-
-Check whether the copied icon exists:
-
-```powershell
-Test-Path "$env:LOCALAPPDATA\UwUConverter\icon.ico"
-```
-
-It should return:
-
-```text
-True
-```
-
-### A video conversion fails
-
-The source codecs may not be compatible with the selected container. Remuxing cannot change codecs, so that conversion may need a dedicated transcoding path.
+Run UwUConverter once without conversion arguments and restart Explorer.
 
 ### A document loses formatting
 
-The current no-LibreOffice document conversion system focuses on extracting and recreating text rather than preserving full layout.
+The current document system focuses mainly on text content.
 
 ### A spreadsheet loses formatting or formulas
 
-The spreadsheet conversion system focuses on cell values. Advanced Excel and workbook features are not guaranteed to survive.
+The current spreadsheet system focuses mainly on cell values.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## Reporting bugs
 
 Include:
 
+- Operating system
+- Desktop environment
+- File manager
 - Input extension
-- Selected output format
-- Full terminal traceback
-- Source codecs for media problems
-- Whether the problem happens in a release build or source build
-- A description of any formatting or workbook features that were lost
+- Selected action
+- Full traceback
+- Source codecs for media issues
+- Whether you used a source or release build
 
 ## License
 
 UwUConverter is licensed under the MIT License.
 
-You may use, copy, modify, distribute, sublicense, and sell copies of the software, provided that the original copyright and license notice are preserved.
-
-The software is provided without warranty. See the `LICENSE` file for the complete terms.
-
 ## Development status
 
-UwUConverter is a learning project under active development. Some unusual codecs, camera RAW formats, documents, spreadsheets, and conversion combinations may not work correctly yet.
+UwUConverter is a learning project under active development. Windows is the most tested platform. Linux support is experimental.
