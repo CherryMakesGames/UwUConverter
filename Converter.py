@@ -180,6 +180,13 @@ def ConvertFile(file_path, convert_type):
 
 
 if __name__ == "__main__":
+    if (
+        len(sys.argv) > 2
+        and sys.argv[1] == "__BATCH_GUI__"
+    ):
+        open_batch_dialog(sys.argv[2])
+        raise SystemExit
+
     is_uninstalling = (
         len(sys.argv) > 1
         and sys.argv[1] == "--uninstall"
