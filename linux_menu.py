@@ -4,13 +4,18 @@ import shutil
 import stat
 import sys
 
+from batch_menus import BATCH_MENUS
+
 
 APP_FOLDER_NAME = "UwUConverter"
 
 SCRIPT_FOLDERS = {
-    "Nautilus": pathlib.Path.home() / ".local/share/nautilus/scripts",
-    "Nemo": pathlib.Path.home() / ".local/share/nemo/scripts",
-    "Caja": pathlib.Path.home() / ".config/caja/scripts",
+    "Nautilus": pathlib.Path.home()
+    / ".local/share/nautilus/scripts",
+    "Nemo": pathlib.Path.home()
+    / ".local/share/nemo/scripts",
+    "Caja": pathlib.Path.home()
+    / ".config/caja/scripts",
 }
 
 DOLPHIN_FOLDER = (
@@ -18,274 +23,151 @@ DOLPHIN_FOLDER = (
     / ".local/share/kio/servicemenus"
 )
 
-MIME_TYPES = {
-    ".mp4": "video/mp4",
-    ".mkv": "video/x-matroska",
-    ".mov": "video/quicktime",
-    ".avi": "video/x-msvideo",
-    ".webm": "video/webm",
-    ".mp3": "audio/mpeg",
-    ".wav": "audio/x-wav",
-    ".ogg": "audio/ogg",
-    ".flac": "audio/flac",
-    ".opus": "audio/ogg",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".webp": "image/webp",
-    ".ico": "image/vnd.microsoft.icon",
-    ".raw": "application/octet-stream",
-    ".pdf": "application/pdf",
-    ".docx": (
-        "application/vnd.openxmlformats-officedocument."
-        "wordprocessingml.document"
-    ),
-    ".txt": "text/plain",
-    ".odt": "application/vnd.oasis.opendocument.text",
-    ".xlsx": (
-        "application/vnd.openxmlformats-officedocument."
-        "spreadsheetml.sheet"
-    ),
-    ".xls": "application/vnd.ms-excel",
-    ".ods": "application/vnd.oasis.opendocument.spreadsheet",
-    ".csv": "text/csv",
-    ".xlsb": (
-        "application/vnd.ms-excel.sheet.binary."
-        "macroEnabled.12"
-    ),
-    ".xlsm": (
-        "application/vnd.ms-excel.sheet."
-        "macroEnabled.12"
-    ),
-    ".tsv": "text/tab-separated-values",
-}
-
 
 def CreateExtensions(file_types):
-    actions = collect_actions(file_types)
-
-    for manager, folder in SCRIPT_FOLDERS.items():
-        app_folder = folder / APP_FOLDER_NAME
+    for manager, root in SCRIPT_FOLDERS.items():
+        app_folder = root / APP_FOLDER_NAME
 
         if app_folder.exists():
             shutil.rmtree(app_folder)
 
-        create_script_menus(
+        create_batch_scripts(
             app_folder,
-            actions
+            BATCH_MENUS
         )
 
         print(
-            f"Installed {manager} scripts: "
+            f"Installed {manager} batch scripts: "
             f"{app_folder}"
         )
 
-    create_dolphin_menus(actions)
+    create_dolphin_batch_menus(
+        BATCH_MENUS
+    )
 
     print(
-        "Installed Dolphin service menus: "
+        "Installed Dolphin batch menus: "
         + str(DOLPHIN_FOLDER)
     )
 
 
 def RemoveExtensions(file_types=None):
-    for folder in SCRIPT_FOLDERS.values():
-        app_folder = folder / APP_FOLDER_NAME
+    for root in SCRIPT_FOLDERS.values():
+        app_folder = root / APP_FOLDER_NAME
 
         if app_folder.exists():
             shutil.rmtree(app_folder)
 
     if DOLPHIN_FOLDER.exists():
-        for file in DOLPHIN_FOLDER.glob(
-            "uwuconverter-*.desktop"
+        for path in DOLPHIN_FOLDER.glob(
+            "uwuconverter-batch-*.desktop"
         ):
-            file.unlink()
+            path.unlink()
 
-    print("Removed UwUConverter Linux menus.")
-
-
-def collect_actions(file_types):
-    actions = {}
-
-    for extension, items in file_types.items():
-        collect_items(
-            items,
-            extension,
-            default_group(extension),
-            actions
-        )
-
-    return actions
+    print(
+        "Removed UwUConverter Linux menus."
+    )
 
 
-def collect_items(
-    items,
-    extension,
-    group_name,
-    actions
-):
-    for _, label, action in items:
+def create_batch_scripts(root, items):
+    for item_id, label, action in items:
+        path = root / safe_name(label)
+
         if isinstance(action, list):
-            collect_items(
-                action,
-                extension,
-                label,
-                actions
-            )
-        else:
-            key = (
-                group_name,
-                label,
+            create_batch_scripts(
+                path,
                 action
             )
+            continue
 
-            actions.setdefault(
-                key,
-                set()
-            ).add(extension.lower())
-
-
-def default_group(extension):
-    if extension in {
-        ".mp4", ".mkv", ".mov", ".avi", ".webm"
-    }:
-        return "Video Conversions"
-
-    if extension in {
-        ".mp3", ".wav", ".ogg", ".flac", ".opus"
-    }:
-        return "Music Conversions"
-
-    if extension in {
-        ".png", ".jpg", ".jpeg", ".webp", ".ico", ".raw"
-    }:
-        return "Image Conversions"
-
-    if extension in {
-        ".pdf", ".docx", ".txt", ".odt"
-    }:
-        return "Document Conversions"
-
-    return "Spreadsheet Conversions"
-
-
-def create_script_menus(app_folder, actions):
-    for (
-        group_name,
-        label,
-        action
-    ), extensions in sorted(actions.items()):
-        group_folder = (
-            app_folder
-            / safe_name(group_name)
-        )
-
-        group_folder.mkdir(
+        path.parent.mkdir(
             parents=True,
             exist_ok=True
         )
 
-        script = (
-            group_folder
-            / safe_name(label)
-        )
-
-        script.write_text(
-            build_shell_script(
-                action,
-                extensions
-            ),
+        path.write_text(
+            build_folder_script(action),
             encoding="utf-8"
         )
 
-        make_executable(script)
+        make_executable(path)
 
 
-def create_dolphin_menus(actions):
-    DOLPHIN_FOLDER.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    for old_file in DOLPHIN_FOLDER.glob(
-        "uwuconverter-*.desktop"
-    ):
-        old_file.unlink()
-
-    grouped = {}
-
-    for (
-        group_name,
-        label,
-        action
-    ), extensions in actions.items():
-        grouped.setdefault(
-            group_name,
-            []
-        ).append(
-            (
-                label,
-                action,
-                extensions
-            )
-        )
-
-    for group_name, group_actions in grouped.items():
-        file = (
-            DOLPHIN_FOLDER
-            / (
-                "uwuconverter-"
-                + slug(group_name)
-                + ".desktop"
-            )
-        )
-
-        file.write_text(
-            build_dolphin_file(
-                group_name,
-                group_actions
-            ),
-            encoding="utf-8"
-        )
-
-        make_executable(file)
-
-
-def build_dolphin_file(
-    group_name,
-    group_actions
-):
-    action_ids = []
-    mime_types = set()
-    sections = []
-
+def build_folder_script(action):
     command = " ".join(
         shlex.quote(part)
         for part in converter_command()
     )
 
-    for index, (
-        label,
-        action,
-        extensions
-    ) in enumerate(
-        sorted(group_actions),
+    return (
+        "#!/usr/bin/env bash\n"
+        "set -u\n"
+        "for folder_path in \"$@\"; do\n"
+        "    if [ -d \"$folder_path\" ]; then\n"
+        f"        {command} \"$folder_path\" "
+        f"{shlex.quote(action)}\n"
+        "    fi\n"
+        "done\n"
+    )
+
+
+def create_dolphin_batch_menus(items):
+    DOLPHIN_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    for old in DOLPHIN_FOLDER.glob(
+        "uwuconverter-batch-*.desktop"
+    ):
+        old.unlink()
+
+    for _, category_label, modes in items:
+        for _, mode_label, formats in modes:
+            filename = (
+                "uwuconverter-batch-"
+                + slug(category_label)
+                + "-"
+                + slug(mode_label)
+                + ".desktop"
+            )
+
+            path = DOLPHIN_FOLDER / filename
+
+            path.write_text(
+                build_dolphin_menu(
+                    category_label,
+                    mode_label,
+                    formats
+                ),
+                encoding="utf-8"
+            )
+
+            make_executable(path)
+
+
+def build_dolphin_menu(
+    category_label,
+    mode_label,
+    formats
+):
+    command = " ".join(
+        shlex.quote(part)
+        for part in converter_command()
+    )
+
+    action_ids = []
+    sections = []
+
+    for index, (_, label, action) in enumerate(
+        formats,
         start=1
     ):
         action_id = (
-            f"action{index}_"
-            + slug(action)
+            f"format{index}_"
+            + slug(label)
         )
-
         action_ids.append(action_id)
-
-        for extension in extensions:
-            mime_type = MIME_TYPES.get(
-                extension
-            )
-
-            if mime_type:
-                mime_types.add(mime_type)
 
         sections.append(
             "\n".join(
@@ -300,7 +182,7 @@ def build_dolphin_file(
                     (
                         "Exec="
                         + command
-                        + " %F "
+                        + " %f "
                         + shlex.quote(action)
                     ),
                 ]
@@ -311,13 +193,7 @@ def build_dolphin_file(
         [
             "[Desktop Entry]",
             "Type=Service",
-            (
-                "MimeType="
-                + ";".join(
-                    sorted(mime_types)
-                )
-                + ";"
-            ),
+            "MimeType=inode/directory;",
             (
                 "Actions="
                 + ";".join(action_ids)
@@ -325,7 +201,9 @@ def build_dolphin_file(
             ),
             (
                 "X-KDE-Submenu=UwUConverter - "
-                + group_name
+                + category_label
+                + " - "
+                + mode_label
             ),
             "X-KDE-Priority=TopLevel",
         ]
@@ -336,36 +214,6 @@ def build_dolphin_file(
         + "\n\n"
         + "\n\n".join(sections)
         + "\n"
-    )
-
-
-def build_shell_script(
-    action,
-    extensions
-):
-    command = " ".join(
-        shlex.quote(part)
-        for part in converter_command()
-    )
-
-    extension_cases = "|".join(
-        extension.removeprefix(".")
-        for extension in sorted(extensions)
-    )
-
-    return (
-        "#!/usr/bin/env bash\n"
-        "set -u\n"
-        "for file_path in \"$@\"; do\n"
-        "    extension=\"${file_path##*.}\"\n"
-        "    extension=\"${extension,,}\"\n"
-        "    case \"$extension\" in\n"
-        f"        {extension_cases})\n"
-        f"            {command} \"$file_path\" "
-        f"{shlex.quote(action)}\n"
-        "            ;;\n"
-        "    esac\n"
-        "done\n"
     )
 
 
@@ -396,7 +244,10 @@ def make_executable(path):
 
 
 def safe_name(value):
-    return value.replace("/", "_").strip()
+    return (
+        value.replace("/", "_").strip()
+        or "Unnamed"
+    )
 
 
 def slug(value):

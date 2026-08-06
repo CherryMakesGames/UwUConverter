@@ -6,6 +6,8 @@ import av
 
 import platform_menu
 from audio_converter import convert_audio
+from batch_converter import batch_convert_folder
+from batch_dialog import open_batch_dialog
 from compression import (
     compress_video_lossless,
     compress_video_by_percent,
@@ -23,33 +25,38 @@ av.logging.set_level(av.logging.VERBOSE)
 
 
 VIDEO_OUTPUTS = {
-    "mp4",
-    "mkv",
-    "mov",
-    "avi",
-    "webm"
+    "mp4", "mkv", "mov", "avi", "webm"
 }
 
 AUDIO_OUTPUTS = {
-    "mp3",
-    "wav",
-    "flac",
-    "ogg",
-    "opus"
+    "mp3", "wav", "flac", "ogg", "opus"
 }
 
 IMAGE_OUTPUTS = {
-    "png",
-    "jpg",
-    "jpeg",
-    "webp",
-    "ico",
-    "pdf"
+    "png", "jpg", "jpeg", "webp", "ico", "pdf"
 }
 
 
 def ConvertFile(file_path, convert_type):
     action = convert_type.lower()
+
+    if action == "batch_ui_all":
+        open_batch_dialog(file_path)
+        return
+
+    if action.startswith("batch_ui_"):
+        open_batch_dialog(
+            file_path,
+            action.removeprefix("batch_ui_")
+        )
+        return
+
+    if action.startswith("batch_"):
+        batch_convert_folder(
+            file_path,
+            action
+        )
+        return
 
     input_extension = (
         pathlib.Path(file_path).suffix.lower()
@@ -77,14 +84,9 @@ def ConvertFile(file_path, convert_type):
 
     if (
         action in IMAGE_OUTPUTS
-        and input_extension
-        in {
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".webp",
-            ".ico",
-            ".raw"
+        and input_extension in {
+            ".png", ".jpg", ".jpeg",
+            ".webp", ".ico", ".raw"
         }
     ):
         convert_image(
@@ -94,84 +96,56 @@ def ConvertFile(file_path, convert_type):
         )
         return
 
-    if action == "video_compress_lossless":
-        compress_video_lossless(file_path)
+    video_compression = {
+        "video_compress_lossless": None,
+        "video_compress_25": 25,
+        "video_compress_50": 50,
+        "video_compress_75": 75,
+    }
+
+    if action in video_compression:
+        percent = video_compression[action]
+
+        if percent is None:
+            compress_video_lossless(file_path)
+        else:
+            compress_video_by_percent(
+                file_path,
+                percent
+            )
         return
 
-    if action == "video_compress_25":
-        compress_video_by_percent(
-            file_path,
-            25
-        )
-        return
+    image_compression = {
+        "image_compress_lossless": None,
+        "image_compress_25": 25,
+        "image_compress_50": 50,
+        "image_compress_75": 75,
+    }
 
-    if action == "video_compress_50":
-        compress_video_by_percent(
-            file_path,
-            50
-        )
-        return
+    if action in image_compression:
+        percent = image_compression[action]
 
-    if action == "video_compress_75":
-        compress_video_by_percent(
-            file_path,
-            75
-        )
-        return
-
-    if action == "image_compress_lossless":
-        compress_image_lossless(file_path)
-        return
-
-    if action == "image_compress_25":
-        compress_image_by_percent(
-            file_path,
-            25
-        )
-        return
-
-    if action == "image_compress_50":
-        compress_image_by_percent(
-            file_path,
-            50
-        )
-        return
-
-    if action == "image_compress_75":
-        compress_image_by_percent(
-            file_path,
-            75
-        )
+        if percent is None:
+            compress_image_lossless(file_path)
+        else:
+            compress_image_by_percent(
+                file_path,
+                percent
+            )
         return
 
     document_actions = {
-        "docxfpdf": (
-            ".docx",
-            "docx_from_pdf"
-        ),
-        "docpdf": (
-            ".pdf",
-            "pdf"
-        ),
-        "doctxt": (
-            ".txt",
-            "txt"
-        ),
-        "docodt": (
-            ".odt",
-            "odt"
-        ),
-        "docdocx": (
-            ".docx",
-            "docx"
-        )
+        "docxfpdf": (".docx", "docx_from_pdf"),
+        "docpdf": (".pdf", "pdf"),
+        "doctxt": (".txt", "txt"),
+        "docodt": (".odt", "odt"),
+        "docdocx": (".docx", "docx"),
     }
 
     if action in document_actions:
         suffix, output_format = (
             document_actions[action]
         )
-
         convert_document(
             file_path,
             output_base + suffix,
@@ -185,14 +159,13 @@ def ConvertFile(file_path, convert_type):
         "sheetxls": (".xls", "xls"),
         "sheetods": (".ods", "ods"),
         "sheetcsv": (".csv", "csv"),
-        "sheettsv": (".tsv", "tsv")
+        "sheettsv": (".tsv", "tsv"),
     }
 
     if action in spreadsheet_actions:
         suffix, output_format = (
             spreadsheet_actions[action]
         )
-
         convert_spreadsheet(
             file_path,
             output_base + suffix,
