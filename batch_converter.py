@@ -93,11 +93,33 @@ def parse_batch_action(action):
     return category, mode, output_format
 
 
+
+class NullLog:
+    def write(self, value):
+        return len(value)
+
+    def flush(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exception_type,
+        exception,
+        traceback_object
+    ):
+        return False
+
+
+
 def batch_convert_folder(
     folder_path,
     action,
     progress_callback=None,
-    cancel_event=None
+    cancel_event=None,
+    create_log=False
 ):
     category, mode, output_format = (
         parse_batch_action(action)
@@ -123,10 +145,13 @@ def batch_convert_folder(
             exist_ok=True
         )
 
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    log_path = folder / (
-        f"UwUConverter-batch-{timestamp}.log"
-    )
+    log_path = None
+
+    if create_log:
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        log_path = folder / (
+            f"UwUConverter-batch-{timestamp}.log"
+        )
 
     stats = {
         "scanned": 0,
@@ -136,7 +161,11 @@ def batch_convert_folder(
         "skipped": 0,
         "failed": 0,
         "cancelled": False,
-        "log_path": str(log_path),
+        "log_path": (
+            str(log_path)
+            if log_path is not None
+            else None
+        ),
     }
 
     started = time.monotonic()
@@ -165,11 +194,17 @@ def batch_convert_folder(
             }
         )
 
-    with log_path.open(
-        "w",
-        encoding="utf-8",
-        buffering=1
-    ) as log:
+    log_context = (
+        log_path.open(
+            "w",
+            encoding="utf-8",
+            buffering=1
+        )
+        if log_path is not None
+        else NullLog()
+    )
+
+    with log_context as log:
         log.write("UwUConverter batch conversion\n")
         log.write(f"Folder: {folder}\n")
         log.write(f"Category: {category}\n")
@@ -283,8 +318,10 @@ def batch_convert_folder(
             + f"Skipped: {stats['skipped']:,}\n"
             + f"Failed: {stats['failed']:,}\n"
             + f"Elapsed: {elapsed:.1f} seconds\n"
-            + f"Log: {log_path}\n"
         )
+
+        if log_path is not None:
+            summary += f"Log: {log_path}\n"
 
         log.write(summary)
 

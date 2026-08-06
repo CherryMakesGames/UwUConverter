@@ -21,14 +21,24 @@ DOLPHIN_FOLDER = (
     / ".local/share/kio/servicemenus"
 )
 
+# Every filename pattern used by previous Linux implementations.
+DOLPHIN_OLD_PATTERNS = [
+    "uwuconverter-*.desktop",
+    "UwUConverter-*.desktop",
+]
+
+OLD_SCRIPT_NAMES = {
+    "Batch Convert With UwUConverter",
+}
+
 
 def CreateExtensions(file_types):
+    # Always clean up every old UwUConverter integration before
+    # creating the current GUI launcher.
+    cleanup_linux_integrations()
+
     for manager, root in SCRIPT_FOLDERS.items():
         app_folder = root / APP_FOLDER_NAME
-
-        if app_folder.exists():
-            shutil.rmtree(app_folder)
-
         app_folder.mkdir(
             parents=True,
             exist_ok=True
@@ -59,21 +69,64 @@ def CreateExtensions(file_types):
 
 
 def RemoveExtensions(file_types=None):
+    removed = cleanup_linux_integrations()
+
+    if removed:
+        print(
+            "Removed UwUConverter Linux integrations:"
+        )
+
+        for path in removed:
+            print(path)
+    else:
+        print(
+            "No UwUConverter Linux integrations were found."
+        )
+
+
+def cleanup_linux_integrations():
+    removed = []
+
+    # Delete the complete generated script folders. This removes old
+    # nested conversion menus as well as the current GUI launcher.
     for root in SCRIPT_FOLDERS.values():
         app_folder = root / APP_FOLDER_NAME
 
         if app_folder.exists():
             shutil.rmtree(app_folder)
+            removed.append(str(app_folder))
 
+        # Some old builds may have placed the launcher directly in the
+        # file manager's scripts directory.
+        for old_name in OLD_SCRIPT_NAMES:
+            old_path = root / old_name
+
+            if old_path.exists():
+                if old_path.is_dir():
+                    shutil.rmtree(old_path)
+                else:
+                    old_path.unlink()
+
+                removed.append(str(old_path))
+
+    # Remove every Dolphin service menu made by any UwUConverter build,
+    # including the old per-category and per-output-mode menus.
     if DOLPHIN_FOLDER.exists():
-        for path in DOLPHIN_FOLDER.glob(
-            "uwuconverter-batch-gui*.desktop"
-        ):
-            path.unlink()
+        found = set()
 
-    print(
-        "Removed UwUConverter Linux batch GUI menus."
-    )
+        for pattern in DOLPHIN_OLD_PATTERNS:
+            for path in DOLPHIN_FOLDER.glob(pattern):
+                found.add(path)
+
+        for path in sorted(found):
+            if path.is_file() or path.is_symlink():
+                path.unlink()
+                removed.append(str(path))
+            elif path.is_dir():
+                shutil.rmtree(path)
+                removed.append(str(path))
+
+    return removed
 
 
 def create_dolphin_batch_gui_menu():
@@ -81,11 +134,6 @@ def create_dolphin_batch_gui_menu():
         parents=True,
         exist_ok=True
     )
-
-    for old in DOLPHIN_FOLDER.glob(
-        "uwuconverter-batch-gui*.desktop"
-    ):
-        old.unlink()
 
     path = (
         DOLPHIN_FOLDER
@@ -153,7 +201,6 @@ def batch_gui_command():
         if batch_executable.is_file():
             return [str(batch_executable)]
 
-        # Fallback: the main executable can still open the GUI.
         return [
             sys.executable,
             "__BATCH_GUI__",
