@@ -32,6 +32,39 @@ saved_icon = os.path.join(
 icon_value = f'"{saved_icon}",0'
 
 
+def FindPythonw():
+    candidates = [
+        os.path.join(
+            os.path.dirname(python_exe),
+            "pythonw.exe"
+        ),
+        os.path.join(
+            sys.base_prefix,
+            "pythonw.exe"
+        ),
+    ]
+
+    base_executable = getattr(
+        sys,
+        "_base_executable",
+        None
+    )
+
+    if base_executable:
+        candidates.append(
+            os.path.join(
+                os.path.dirname(base_executable),
+                "pythonw.exe"
+            )
+        )
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+
+    return python_exe
+
+
 def SaveIcon():
     os.makedirs(app_folder, exist_ok=True)
 
@@ -41,7 +74,10 @@ def SaveIcon():
     )
 
     if os.path.isfile(source_icon):
-        shutil.copy2(source_icon, saved_icon)
+        shutil.copy2(
+            source_icon,
+            saved_icon
+        )
 
 
 def CreateExtensions(file_types):
@@ -51,7 +87,10 @@ def CreateExtensions(file_types):
         ResetExtension(extension)
 
         if conversions:
-            AddExtension(extension, conversions)
+            AddExtension(
+                extension,
+                conversions
+            )
 
     ResetFolderMenu()
     AddFolderMenu()
@@ -67,11 +106,18 @@ def DeleteTree(root, key_path):
         ) as key:
             while True:
                 try:
-                    child_name = reg.EnumKey(key, 0)
+                    child_name = reg.EnumKey(
+                        key,
+                        0
+                    )
+
                     DeleteTree(
                         root,
-                        key_path + "\\" + child_name
+                        key_path
+                        + "\\"
+                        + child_name
                     )
+
                 except OSError:
                     break
 
@@ -84,7 +130,9 @@ def DeleteTree(root, key_path):
 def ResetExtension(file_type):
     DeleteTree(
         reg.HKEY_CURRENT_USER,
-        FILE_PATH_START + file_type + FILE_NAME
+        FILE_PATH_START
+        + file_type
+        + FILE_NAME
     )
 
 
@@ -96,8 +144,8 @@ def ResetFolderMenu():
 
 
 def command_string(convert_type):
-    if convert_type == "BATCH_UI_ALL":
-        if is_packaged:
+    if is_packaged:
+        if convert_type == "BATCH_UI_ALL":
             batch_executable = os.path.join(
                 os.path.dirname(sys.executable),
                 "UwUConverterBatch.exe"
@@ -109,28 +157,24 @@ def command_string(convert_type):
                     f'"%1"'
                 )
 
-        pythonw_exe = os.path.join(
-            os.path.dirname(python_exe),
-            "pythonw.exe"
-        )
-
-        if os.path.isfile(pythonw_exe):
-            batch_script = os.path.join(
-                cwd,
-                "BatchLauncher.py"
-            )
-
-            return (
-                f'"{pythonw_exe}" '
-                f'"{batch_script}" '
-                f'"%1"'
-            )
-
-    if is_packaged:
         return (
             f'"{sys.executable}" '
             f'"%1" '
             f'"{convert_type}"'
+        )
+
+    pythonw_exe = FindPythonw()
+
+    if convert_type == "BATCH_UI_ALL":
+        batch_script = os.path.join(
+            cwd,
+            "BatchLauncher.py"
+        )
+
+        return (
+            f'"{pythonw_exe}" '
+            f'"{batch_script}" '
+            f'"%1"'
         )
 
     converter_script = os.path.join(
@@ -139,7 +183,7 @@ def command_string(convert_type):
     )
 
     return (
-        f'"{python_exe}" '
+        f'"{pythonw_exe}" '
         f'"{converter_script}" '
         f'"%1" '
         f'"{convert_type}"'
@@ -197,7 +241,10 @@ def CreateMenuItems(parent_path, items):
                 )
 
         if isinstance(action, list):
-            CreateMenuItems(item_path, action)
+            CreateMenuItems(
+                item_path,
+                action
+            )
         else:
             CreateCommand(
                 item_path + "\\command",
@@ -207,7 +254,9 @@ def CreateMenuItems(parent_path, items):
 
 def AddExtension(file_type, conversions):
     key_path = (
-        FILE_PATH_START + file_type + FILE_NAME
+        FILE_PATH_START
+        + file_type
+        + FILE_NAME
     )
 
     with reg.CreateKey(
@@ -236,7 +285,10 @@ def AddExtension(file_type, conversions):
             ""
         )
 
-    CreateMenuItems(key_path, conversions)
+    CreateMenuItems(
+        key_path,
+        conversions
+    )
 
 
 def AddFolderMenu():
@@ -259,8 +311,6 @@ def AddFolderMenu():
             icon_value
         )
 
-    # This is intentionally a normal command, not a cascade.
-    # It opens one dialog containing category, mode, and format.
     CreateCommand(
         FOLDER_MENU_PATH + "\\command",
         "BATCH_UI_ALL"

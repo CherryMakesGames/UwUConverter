@@ -151,6 +151,23 @@ def open_batch_dialog(folder_path, category=None):
         pady=4
     )
 
+    create_log_value = tk.BooleanVar(
+        value=False
+    )
+
+    create_log_checkbox = ttk.Checkbutton(
+        frame,
+        text="Create log file in the source folder",
+        variable=create_log_value
+    )
+    create_log_checkbox.grid(
+        row=10,
+        column=0,
+        columnspan=2,
+        sticky="w",
+        pady=(8, 0)
+    )
+
     def selected_category():
         selected_label = category_box.get()
 
@@ -246,6 +263,9 @@ def open_batch_dialog(folder_path, category=None):
         category_box.config(state=state)
         mode_box.config(state=state)
         format_box.config(state=state)
+        create_log_checkbox.config(
+            state="normal" if enabled else "disabled"
+        )
         start_button.config(
             state="normal" if enabled else "disabled"
         )
@@ -253,13 +273,14 @@ def open_batch_dialog(folder_path, category=None):
     def progress_callback(data):
         events.put(("progress", data))
 
-    def worker_main(action):
+    def worker_main(action, create_log):
         try:
             stats = batch_convert_folder(
                 folder_path,
                 action,
                 progress_callback=progress_callback,
-                cancel_event=cancel_event
+                cancel_event=cancel_event,
+                create_log=create_log
             )
             events.put(("finished", stats))
         except Exception as error:
@@ -310,7 +331,10 @@ def open_batch_dialog(folder_path, category=None):
 
         worker = threading.Thread(
             target=worker_main,
-            args=(action,),
+            args=(
+                action,
+                create_log_value.get()
+            ),
             daemon=True
         )
         worker.start()
@@ -398,8 +422,12 @@ def open_batch_dialog(folder_path, category=None):
                             + f"{payload['converted']:,}"
                             + "\nFailed: "
                             + f"{payload['failed']:,}"
-                            + "\n\nLog:\n"
-                            + payload["log_path"]
+                            + (
+                                "\n\nLog:\n"
+                                + payload["log_path"]
+                                if payload["log_path"]
+                                else ""
+                            )
                         )
                     else:
                         status.config(text="Batch complete.")
@@ -411,8 +439,12 @@ def open_batch_dialog(folder_path, category=None):
                             + f"{payload['skipped']:,}"
                             + "\nFailed: "
                             + f"{payload['failed']:,}"
-                            + "\n\nLog:\n"
-                            + payload["log_path"]
+                            + (
+                                "\n\nLog:\n"
+                                + payload["log_path"]
+                                if payload["log_path"]
+                                else ""
+                            )
                         )
 
                 elif event_type == "error":

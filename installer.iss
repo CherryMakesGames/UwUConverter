@@ -1,9 +1,9 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "1.0.0"
-#define MyAppPublisher "Cherry Leper"
+#define MyAppVersion "1.3"
+#define MyAppPublisher "Pink Sakura Studios"
 #define MyAppExeName "UwUConverter.exe"
 
-[Setup]
+[Setup] 
 AppId={{7B6F193A-8D9C-42E1-81E8-E9E85C796940}
 Uninstallable=yes
 CreateUninstallRegKey=yes

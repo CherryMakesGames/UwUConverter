@@ -1,6 +1,7 @@
 import pathlib
 import sys
 import traceback
+from tkinter import messagebox
 
 import av
 
@@ -210,7 +211,14 @@ if __name__ == "__main__":
             )
 
     except Exception:
+        error_text = traceback.format_exc()
         traceback.print_exc()
 
         if not is_uninstalling:
-            input("\nPress Enter to close...")
+            try:
+                messagebox.showerror(
+                    "UwUConverter conversion failed",
+                    error_text
+                )
+            except Exception:
+                pass
