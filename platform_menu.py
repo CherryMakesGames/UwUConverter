@@ -13,7 +13,7 @@ def CreateExtensions(file_types):
         return
 
     raise NotImplementedError(
-        "Context-menu installation is not supported on "
+        "Menu installation is not supported on "
         + sys.platform
     )
 
@@ -30,6 +30,6 @@ def RemoveExtensions(file_types):
         return
 
     raise NotImplementedError(
-        "Context-menu removal is not supported on "
+        "Menu removal is not supported on "
         + sys.platform
     )

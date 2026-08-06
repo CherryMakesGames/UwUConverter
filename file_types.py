@@ -108,6 +108,7 @@ file_types = {
 
     # audio files
     ".mp3": [
+        ("01_mp3", "Convert To MP3", "MP3"),
         ("02_flac", "Convert To FLAC", "FLAC"),
         ("03_ogg", "Convert To Audio OGG", "OGG"),
         ("04_wav", "Convert To WAV", "WAV"),
@@ -163,9 +164,10 @@ file_types = {
             ("05_pdf", "Convert To PDF", "PDF")
         ]),
         ("02_compression", "Compression", [
-            ("01_high", "High Quality", "IMAGE_COMPRESS_HIGH"),
-            ("02_balanced", "Balanced", "IMAGE_COMPRESS_MEDIUM"),
-            ("03_small", "Smallest File", "IMAGE_COMPRESS_LOW")
+            ("01_lossless", "Lossless Optimize", "IMAGE_COMPRESS_LOSSLESS"),
+            ("02_25", "Compress By 25%", "IMAGE_COMPRESS_25"),
+            ("03_50", "Compress By 50%", "IMAGE_COMPRESS_50"),
+            ("04_75", "Compress By 75%", "IMAGE_COMPRESS_75")
         ])
     ],
     ".jpeg": [
@@ -177,9 +179,10 @@ file_types = {
             ("05_pdf", "Convert To PDF", "PDF")
         ]),
         ("02_compression", "Compression", [
-            ("01_high", "High Quality", "IMAGE_COMPRESS_HIGH"),
-            ("02_balanced", "Balanced", "IMAGE_COMPRESS_MEDIUM"),
-            ("03_small", "Smallest File", "IMAGE_COMPRESS_LOW")
+            ("01_lossless", "Lossless Optimize", "IMAGE_COMPRESS_LOSSLESS"),
+            ("02_25", "Compress By 25%", "IMAGE_COMPRESS_25"),
+            ("03_50", "Compress By 50%", "IMAGE_COMPRESS_50"),
+            ("04_75", "Compress By 75%", "IMAGE_COMPRESS_75")
         ])
     ],
     ".webp": [
@@ -191,9 +194,10 @@ file_types = {
             ("05_pdf", "Convert To PDF", "PDF")
         ]),
         ("02_compression", "Compression", [
-            ("01_high", "High Quality", "IMAGE_COMPRESS_HIGH"),
-            ("02_balanced", "Balanced", "IMAGE_COMPRESS_MEDIUM"),
-            ("03_small", "Smallest File", "IMAGE_COMPRESS_LOW")
+            ("01_lossless", "Lossless Optimize", "IMAGE_COMPRESS_LOSSLESS"),
+            ("02_25", "Compress By 25%", "IMAGE_COMPRESS_25"),
+            ("03_50", "Compress By 50%", "IMAGE_COMPRESS_50"),
+            ("04_75", "Compress By 75%", "IMAGE_COMPRESS_75")
         ])
     ],
     ".ico": [
