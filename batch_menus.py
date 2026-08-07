@@ -4,7 +4,9 @@ IMAGE_FORMATS = [
     ("03_jpeg", "JPEG", "JPEG"),
     ("04_webp", "WEBP", "WEBP"),
     ("05_ico", "ICO", "ICO"),
-    ("06_pdf", "PDF", "PDF"),
+    ("06_tif", "TIF", "TIF"),
+    ("07_tiff", "TIFF", "TIFF"),
+    ("08_pdf", "PDF", "PDF"),
 ]
 
 VIDEO_FORMATS = [

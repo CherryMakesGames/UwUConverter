@@ -33,16 +33,18 @@ icon_value = f'"{saved_icon}",0'
 
 
 def FindPythonw():
-    candidates = [
+    candidates = []
+
+    executable_folder = os.path.dirname(
+        python_exe
+    )
+
+    candidates.append(
         os.path.join(
-            os.path.dirname(python_exe),
+            executable_folder,
             "pythonw.exe"
-        ),
-        os.path.join(
-            sys.base_prefix,
-            "pythonw.exe"
-        ),
-    ]
+        )
+    )
 
     base_executable = getattr(
         sys,
@@ -58,11 +60,22 @@ def FindPythonw():
             )
         )
 
+    candidates.append(
+        os.path.join(
+            sys.base_prefix,
+            "pythonw.exe"
+        )
+    )
+
     for candidate in candidates:
         if os.path.isfile(candidate):
             return candidate
 
-    return python_exe
+    raise FileNotFoundError(
+        "pythonw.exe was not found. UwUConverter refuses "
+        "to register python.exe for context-menu conversions "
+        "because that would create a console window."
+    )
 
 
 def SaveIcon():

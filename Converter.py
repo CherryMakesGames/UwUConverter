@@ -34,7 +34,7 @@ AUDIO_OUTPUTS = {
 }
 
 IMAGE_OUTPUTS = {
-    "png", "jpg", "jpeg", "webp", "ico", "pdf"
+    "png", "jpg", "jpeg", "webp", "ico", "tif", "tiff", "pdf"
 }
 
 
@@ -87,7 +87,7 @@ def ConvertFile(file_path, convert_type):
         action in IMAGE_OUTPUTS
         and input_extension in {
             ".png", ".jpg", ".jpeg",
-            ".webp", ".ico", ".raw"
+            ".webp", ".ico", ".tif", ".tiff", ".raw"
         }
     ):
         convert_image(

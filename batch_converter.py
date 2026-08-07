@@ -13,7 +13,8 @@ from video_converter import convert_video
 
 CATEGORY_EXTENSIONS = {
     "image": {
-        ".png", ".jpg", ".jpeg", ".webp", ".ico", ".raw"
+        ".png", ".jpg", ".jpeg", ".webp", ".ico",
+        ".tif", ".tiff", ".raw"
     },
     "video": {
         ".mp4", ".mkv", ".mov", ".avi", ".webm"
@@ -36,6 +37,8 @@ OUTPUT_EXTENSIONS = {
     "jpeg": ".jpeg",
     "webp": ".webp",
     "ico": ".ico",
+    "tif": ".tif",
+    "tiff": ".tiff",
     "pdf": ".pdf",
 
     "mp4": ".mp4",

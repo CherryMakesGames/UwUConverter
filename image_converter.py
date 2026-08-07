@@ -10,6 +10,8 @@ IMAGE_OUTPUTS = {
     "jpeg",
     "webp",
     "ico",
+    "tif",
+    "tiff",
     "pdf"
 }
 

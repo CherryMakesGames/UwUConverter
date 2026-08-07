@@ -146,7 +146,9 @@ file_types = {
             ("02_jpeg", "Convert To JPEG", "JPEG"),
             ("03_webp", "Convert To WEBP", "WEBP"),
             ("04_ico", "Convert To ICO", "ICO"),
-            ("05_pdf", "Convert To PDF", "PDF")
+            ("05_tif", "Convert To TIF", "TIF"),
+            ("06_tiff", "Convert To TIFF", "TIFF"),
+            ("07_pdf", "Convert To PDF", "PDF")
         ]),
         ("02_compression", "Compression", [
             ("01_lossless", "Lossless Optimize", "IMAGE_COMPRESS_LOSSLESS"),
@@ -161,7 +163,9 @@ file_types = {
             ("02_jpeg", "Convert To JPEG", "JPEG"),
             ("03_webp", "Convert To WEBP", "WEBP"),
             ("04_ico", "Convert To ICO", "ICO"),
-            ("05_pdf", "Convert To PDF", "PDF")
+            ("05_tif", "Convert To TIF", "TIF"),
+            ("06_tiff", "Convert To TIFF", "TIFF"),
+            ("07_pdf", "Convert To PDF", "PDF")
         ]),
         ("02_compression", "Compression", [
             ("01_lossless", "Lossless Optimize", "IMAGE_COMPRESS_LOSSLESS"),
@@ -176,7 +180,9 @@ file_types = {
             ("02_jpg", "Convert To JPG", "JPG"),
             ("03_webp", "Convert To WEBP", "WEBP"),
             ("04_ico", "Convert To ICO", "ICO"),
-            ("05_pdf", "Convert To PDF", "PDF")
+            ("05_tif", "Convert To TIF", "TIF"),
+            ("06_tiff", "Convert To TIFF", "TIFF"),
+            ("07_pdf", "Convert To PDF", "PDF")
         ]),
         ("02_compression", "Compression", [
             ("01_lossless", "Lossless Optimize", "IMAGE_COMPRESS_LOSSLESS"),
@@ -191,7 +197,9 @@ file_types = {
             ("02_jpg", "Convert To JPG", "JPG"),
             ("03_jpeg", "Convert To JPEG", "JPEG"),
             ("04_ico", "Convert To ICO", "ICO"),
-            ("05_pdf", "Convert To PDF", "PDF")
+            ("05_tif", "Convert To TIF", "TIF"),
+            ("06_tiff", "Convert To TIFF", "TIFF"),
+            ("07_pdf", "Convert To PDF", "PDF")
         ]),
         ("02_compression", "Compression", [
             ("01_lossless", "Lossless Optimize", "IMAGE_COMPRESS_LOSSLESS"),
@@ -213,7 +221,33 @@ file_types = {
         ("03_jpeg", "Convert To JPEG", "JPEG"),
         ("04_webp", "Convert To WEBP", "WEBP"),
         ("05_ico", "Convert To ICO", "ICO"),
-        ("06_pdf", "Convert To PDF", "PDF")
+        ("06_tif", "Convert To TIF", "TIF"),
+        ("07_tiff", "Convert To TIFF", "TIFF"),
+        ("08_pdf", "Convert To PDF", "PDF")
+    ],
+
+
+    ".tif": [
+        ("01_conversion", "Image Conversions", [
+            ("01_png", "Convert To PNG", "PNG"),
+            ("02_jpg", "Convert To JPG", "JPG"),
+            ("03_jpeg", "Convert To JPEG", "JPEG"),
+            ("04_webp", "Convert To WEBP", "WEBP"),
+            ("05_ico", "Convert To ICO", "ICO"),
+            ("06_tiff", "Convert To TIFF", "TIFF"),
+            ("07_pdf", "Convert To PDF", "PDF")
+        ])
+    ],
+    ".tiff": [
+        ("01_conversion", "Image Conversions", [
+            ("01_png", "Convert To PNG", "PNG"),
+            ("02_jpg", "Convert To JPG", "JPG"),
+            ("03_jpeg", "Convert To JPEG", "JPEG"),
+            ("04_webp", "Convert To WEBP", "WEBP"),
+            ("05_ico", "Convert To ICO", "ICO"),
+            ("06_tif", "Convert To TIF", "TIF"),
+            ("07_pdf", "Convert To PDF", "PDF")
+        ])
     ],
 
     # documents

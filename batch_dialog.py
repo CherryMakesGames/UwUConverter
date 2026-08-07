@@ -8,7 +8,7 @@ from batch_converter import batch_convert_folder
 
 
 FORMATS = {
-    "image": ["PNG", "JPG", "JPEG", "WEBP", "ICO", "PDF"],
+    "image": ["PNG", "JPG", "JPEG", "WEBP", "ICO", "TIF", "TIFF", "PDF"],
     "video": [
         "MP4", "MKV", "MOV", "AVI", "WEBM",
         "MP3", "WAV", "FLAC", "OGG", "OPUS"
