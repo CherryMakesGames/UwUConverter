@@ -47,29 +47,62 @@ end;
 
 procedure RemoveCliFromPath();
 var
-  P, C, N, Part: String;
-  Parts: TArrayOfString;
-  I: Integer;
+  P, C, N, Part, Rest: String;
+  SeparatorPos: Integer;
 begin
   C := ExpandConstant('{app}\cli');
-  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', P) then
+
+  if not RegQueryStringValue(
+    HKEY_CURRENT_USER,
+    'Environment',
+    'Path',
+    P
+  ) then
     exit;
 
-  Parts := SplitString(P, ';');
   N := '';
+  Rest := P;
 
-  for I := 0 to GetArrayLength(Parts) - 1 do
+  while Rest <> '' do
   begin
-    Part := Parts[I];
-    if (Part <> '') and (CompareText(Part, C) <> 0) then
+    SeparatorPos := Pos(';', Rest);
+
+    if SeparatorPos = 0 then
+    begin
+      Part := Rest;
+      Rest := '';
+    end
+    else
+    begin
+      Part := Copy(
+        Rest,
+        1,
+        SeparatorPos - 1
+      );
+
+      Delete(
+        Rest,
+        1,
+        SeparatorPos
+      );
+    end;
+
+    if (Part <> '') and
+       (CompareText(Part, C) <> 0) then
     begin
       if N <> '' then
         N := N + ';';
+
       N := N + Part;
     end;
   end;
 
-  RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', N);
+  RegWriteExpandStringValue(
+    HKEY_CURRENT_USER,
+    'Environment',
+    'Path',
+    N
+  );
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
