@@ -2,296 +2,211 @@
 
 ![nya~](./Readme%20Images/banner.png)
 
-UwUConverter is a local file converter written in Python. It adds conversion and compression actions directly to the file manager's right-click menu, allowing files and folders to be processed without opening a separate application first.
+UwUConverter is a local file conversion utility written in Python. It supports right-click conversion, a graphical batch converter, and an installable command-line interface.
 
-The project supports Windows and experimental Linux integration for Dolphin, Nautilus, Nemo, and Caja.
+The project currently supports Windows and experimental Linux integration.
 
-## Usage Preview
+## Features
 
-![cOwOnvert Pwetty Pwease](./Readme%20Images/Screenshot%202026-08-04%20155327.png)
-![cOwOmpress Pwease](./Readme%20Images/Screenshot%202026-08-04%20155443.png)
+- Right-click file conversion
+- Right-click folder batch conversion
+- Installable CLI command: `UwUConverter`
+- Video conversion
+- Audio conversion
+- Audio extraction from video
+- Image conversion
+- Camera RAW input
+- Document conversion
+- Spreadsheet conversion
+- Video compression
+- Image compression
+- Safe batch replacement
+- Large-folder batch processing
+- Windows File Explorer integration
+- Dolphin integration
+- Nautilus integration
+- Nemo integration
+- Caja integration
 
-## Main Features
-
-- Converts files directly from the right-click menu
-- Supports video, audio, images, camera RAW files, documents, and spreadsheets
-- Supports video and image compression
-- Includes a graphical batch converter for folders
-- Shows batch progress, counters, the current filename, and cancellation controls
-- Handles very large folders without loading every path into memory
-- Supports three batch output modes
-- Makes detailed batch logs optional
-- Uses hidden or windowed launchers so conversions do not open terminal windows
-- Supports Windows File Explorer
-- Supports KDE Plasma through Dolphin
-- Supports GNOME through Nautilus
-- Supports Cinnamon through Nemo
-- Supports MATE through Caja
-- Installs and removes its own file-manager integrations
-- Uses separate modules for conversion, compression, batch processing, and platform integration
-
-## Download
-
-### Windows
-
-Download the latest Windows installer from the GitHub Releases page:
-
-```text
-UwUConverter-Setup.exe
-```
-
-The installer places UwUConverter in a permanent application folder, installs the right-click menu entries, copies the application icon, and adds uninstall support.
-
-### Linux
-
-Linux releases are currently experimental and should be distributed as a compressed archive:
-
-```text
-UwUConverter-Linux-x64.tar.gz
-```
-
-Extract the archive and run the main executable once to install the file-manager integrations:
-
-```bash
-tar -xzf UwUConverter-Linux-x64.tar.gz
-chmod +x UwUConverter/UwUConverter
-chmod +x UwUConverter/UwUConverterBatch
-./UwUConverter/UwUConverter
-```
+![Right Click Me Senpai~](Readme%20Images/Screenshot%202026-08-04%20155443.png)
+![Fill Me Up With All The Batch Conversions mgh](Readme%20Images/Screenshot%202026-08-07%20133445.png)
 
 ## Supported Formats
 
-### Video Input
+### Video
 
-- MP4
-- MKV
-- MOV
-- AVI
-- WebM
+Input:
 
-Video output options:
+```text
+MP4
+MKV
+MOV
+AVI
+WEBM
+```
 
-- MP4
-- MKV
-- MOV
-- AVI
-- WebM
+Video output:
 
-Audio extraction options:
+```text
+MP4
+MKV
+MOV
+AVI
+WEBM
+```
 
-- MP3
-- WAV
-- FLAC
-- OGG
-- OPUS
+Audio extraction:
 
-### Audio Input
+```text
+MP3
+WAV
+FLAC
+OGG
+OPUS
+```
 
-- MP3
-- WAV
-- OGG
-- FLAC
-- OPUS
+### Audio
 
-Audio output options:
+Input and output:
 
-- MP3
-- WAV
-- FLAC
-- OGG
-- OPUS
+```text
+MP3
+WAV
+FLAC
+OGG
+OPUS
+```
 
-### Image Input
+### Images
 
-- PNG
-- JPG
-- JPEG
-- WebP
-- ICO
-- RAW
+Input:
 
-Image output options:
+```text
+PNG
+JPG
+JPEG
+WEBP
+ICO
+TIF
+TIFF
+RAW
+```
 
-- PNG
-- JPG
-- JPEG
-- WebP
-- ICO
-- PDF
+Output:
 
-RAW is input-only. UwUConverter does not create camera RAW files.
+```text
+PNG
+JPG
+JPEG
+WEBP
+ICO
+TIF
+TIFF
+PDF
+```
 
-RAW support depends on whether `rawpy` and LibRaw recognize the camera format.
+RAW is input-only.
 
-### Document Input
+TIF and TIFF are both supported as normal image inputs and outputs.
 
-- PDF
-- DOCX
-- ODT
-- TXT
+### Documents
 
-Document output options:
+Input:
 
-- PDF
-- DOCX
-- ODT
-- TXT
+```text
+PDF
+DOCX
+ODT
+TXT
+```
 
-PDF-to-DOCX conversion uses `pdf2docx`.
+Output:
 
-Other document conversions focus mainly on text content. Exact layout, images, tables, fonts, headers, footers, columns, spacing, and pagination may not be preserved.
+```text
+PDF
+DOCX
+ODT
+TXT
+```
 
-Legacy `.doc` files are not currently supported.
+PDF to DOCX uses `pdf2docx`.
 
-### Spreadsheet Input
+Other document conversions mainly preserve text rather than exact layout.
 
-- XLSX
-- XLS
-- XLSB
-- XLSM
-- ODS
-- CSV
-- TSV
+### Spreadsheets
 
-Spreadsheet output options:
+Input:
 
-- PDF
-- XLSX
-- XLS
-- ODS
-- CSV
-- TSV
+```text
+XLSX
+XLS
+XLSB
+XLSM
+ODS
+CSV
+TSV
+```
+
+Output:
+
+```text
+PDF
+XLSX
+XLS
+ODS
+CSV
+TSV
+```
 
 XLSB and XLSM are currently input-only.
 
-Spreadsheet conversions focus on cell values. The following may be lost or changed:
+Spreadsheet conversion focuses mainly on cell values. Complex workbook features such as VBA, charts, pivot tables, formatting, and conditional formatting may not survive conversion.
 
-- Formulas
-- VBA macros
-- Charts
-- Pivot tables
-- Cell styling
-- Conditional formatting
-- Workbook metadata
-- Multiple sheets when exporting to CSV or TSV
+# Right-Click Conversion
 
-## Single-File Conversion
-
-Right-click a supported file and open:
+On Windows, right-click a supported file and select:
 
 ```text
 Convert With UwUConverter ^-^
 ```
 
-Choose the required conversion or compression action.
+The menu exposes the conversion options supported for that file type.
 
-The result is saved beside the source file.
+Single-file conversions on Windows launch without opening a Command Prompt window.
 
-Examples:
+Errors are shown in a message box instead.
 
-```text
-video.mkv -> video.mp4
-video.mp4 -> video.mp3
-song.wav -> song.opus
-photo.raw -> photo.png
-document.docx -> document.pdf
-spreadsheet.xlsx -> spreadsheet.csv
-```
+# Batch Converter
 
-Single-file conversions launch without a terminal window on Windows.
+Right-click a folder to open the batch converter.
 
-When a conversion fails, UwUConverter displays an error window containing the traceback.
+The batch GUI contains:
 
-## Compression
-
-UwUConverter provides four compression options for supported images and videos:
-
-- Lossless Optimize
-- Compress By 25%
-- Compress By 50%
-- Compress By 75%
-
-The percentage describes the intended reduction from the original file size:
-
-```text
-Compress By 25% -> aims for about 75% of the original size
-Compress By 50% -> aims for about 50% of the original size
-Compress By 75% -> aims for about 25% of the original size
-```
-
-The result is a target rather than an exact guarantee.
-
-Final size can vary because of:
-
-- Source codec
-- Existing compression
-- Image contents
-- Video duration
-- Minimum practical bitrates
-- Metadata
-- Container overhead
-
-Video percentage compression keeps the original file extension and container.
-
-Lossless optimization may only save a small amount when the source is already efficiently encoded.
-
-## Batch Converter
-
-Right-click a folder and select the UwUConverter batch entry.
-
-On Windows:
-
-```text
-Convert With UwUConverter ^-^
-```
-
-On Dolphin:
-
-```text
-Batch Convert With UwUConverter
-```
-
-On Nautilus, Nemo, and Caja, the launcher appears inside the file manager's `Scripts` submenu.
-
-The batch window contains:
-
-- Category
-- Output mode
-- Output format
-- Create log checkbox
-- Scanning progress
+- Category selector
+- Output mode selector
+- Output format selector
+- Folder scanning progress
 - Conversion progress bar
-- Converted count
-- Skipped count
-- Failed count
-- Current filename
-- Cancel button
 
-### Batch Categories
+The conversion runs on a worker thread so the window remains responsive.
 
-- Images
-- Video
-- Audio
-- Documents
-- Spreadsheets
+## Batch Categories
 
-The batch converter exposes every output format currently supported by the matching single-file converter.
+```text
+Images
+Video
+Audio
+Documents
+Spreadsheets
+```
 
-### Batch Output Modes
+## Batch Output Modes
 
-#### Replace Originals
+### Create a new folder
 
-Successfully converted files replace their source files.
+This is the default mode.
 
-UwUConverter first converts to a temporary file. The source is only removed after the output exists and is not empty.
-
-When the source and destination use the same extension, the temporary result atomically replaces the original.
-
-Failed conversions leave the original file untouched.
-
-#### Create a New Folder
-
-A new sibling folder is created beside the selected source folder.
+The converted folder is created beside the original folder.
 
 Example:
 
@@ -300,11 +215,9 @@ Pictures/
 Pictures - Converted to WEBP/
 ```
 
-The converted files are placed in the new folder.
+### Place beside originals
 
-#### Place Beside Originals
-
-Converted files are placed directly beside their source files.
+Converted files are saved in the same folder as the source files.
 
 Example:
 
@@ -316,21 +229,27 @@ Pictures/
 └── image02.webp
 ```
 
-Existing destination files are skipped instead of overwritten.
+### Replace originals
 
-### Optional Batch Logs
+The source is removed only after the converted file has been created successfully and verified to be non-empty.
 
-The batch window contains:
+Temporary files are created first and moved into place only after conversion succeeds.
+
+Failed conversions leave the source untouched.
+
+## Batch Logging
+
+The GUI contains:
 
 ```text
 [ ] Create log file in the source folder
 ```
 
-The checkbox is disabled by default.
+Logging is disabled by default.
 
-When disabled, UwUConverter does not create a log file in the source folder.
+When disabled, no `.log` file is created.
 
-When enabled, it creates:
+When enabled, UwUConverter creates:
 
 ```text
 UwUConverter-batch-YYYYMMDD-HHMMSS.log
@@ -338,120 +257,331 @@ UwUConverter-batch-YYYYMMDD-HHMMSS.log
 
 The log includes:
 
-- Skipped files
-- Failed files
-- Tracebacks
-- Totals
-- Elapsed time
+- skipped files
+- failed files
+- tracebacks
+- totals
+- elapsed time
 
-### Large Folder Support
+## Large Folder Support
 
-The batch converter is designed to work with extremely large folders, including folders containing around 100,000 files.
+Batch conversion is designed to handle very large folders without keeping every path in memory.
 
-It uses two streaming passes:
+The converter performs two streamed passes with `os.scandir()`:
 
-1. Count matching files for the progress bar.
+1. Count matching files for progress reporting.
 2. Convert matching files one at a time.
 
-It does not build a list containing every file path.
+This keeps memory usage relatively stable even with folders containing tens of thousands of files.
 
-The implementation uses:
+Batch conversion is currently non-recursive.
 
-- `os.scandir()` for streamed directory access
-- Stable memory use
-- Sequential conversion
-- One active conversion at a time
-- Per-file error handling
-- Safe cancellation after the current file
-- Temporary output files
-- Atomic final replacement where supported
-- Optional line-buffered logging
+# Compression
 
-The current implementation processes files directly inside the selected folder. It does not recursively process nested folders.
+UwUConverter supports image and video compression.
 
-A folder with 100,000 files can still take a long time to scan and convert, but memory use should remain relatively stable.
+## GUI Compression Presets
 
-## Windows Support
-
-### File Explorer Integration
-
-Single-file menus are registered under:
+The right-click GUI currently exposes:
 
 ```text
-HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations
+Lossless Optimize
+Compress By 25%
+Compress By 50%
+Compress By 75%
 ```
 
-The folder batch command is registered under:
+The percentage represents the requested file-size reduction.
+
+Example:
 
 ```text
-HKEY_CURRENT_USER\Software\Classes\Directory\shell\UwUConverter
+25% reduction -> target roughly 75% of original size
+50% reduction -> target roughly 50% of original size
+75% reduction -> target roughly 25% of original size
 ```
 
-Administrator access should not normally be required because the entries are installed for the current user.
+These are targets rather than exact guarantees.
 
-### Windows Installation Location
+## CLI Compression
 
-The installer normally places UwUConverter under:
+The CLI is more flexible and accepts any integer from 1 to 99:
+
+```powershell
+UwUConverter compress ".\video.mp4" --percent 40
+UwUConverter compress ".\video.mp4" --percent 63
+UwUConverter compress ".\image.webp" --percent 20
+```
+
+Lossless:
+
+```powershell
+UwUConverter compress ".\video.mp4" --lossless
+UwUConverter compress ".\image.webp" --lossless
+```
+
+# Command-Line Interface
+
+UwUConverter installs a normal console command:
+
+```text
+UwUConverter
+```
+
+The CLI does not open the batch GUI.
+
+It supports direct conversion, compression, batch conversion, menu installation, and format listing.
+
+## Help
+
+```powershell
+UwUConverter --help
+UwUConverter --version
+UwUConverter formats
+```
+
+## Convert a File
+
+```powershell
+UwUConverter convert ".\photo.tif" --to webp
+UwUConverter convert ".\video.mkv" --to mp4
+UwUConverter convert ".\video.mp4" --to opus
+UwUConverter convert ".\report.pdf" --to docx
+UwUConverter convert ".\sheet.xlsx" --to csv
+```
+
+Short format flag:
+
+```powershell
+UwUConverter convert ".\photo.png" -t webp
+```
+
+Exact output path:
+
+```powershell
+UwUConverter convert ".\photo.tif" -t png -o ".\converted.png"
+```
+
+Output directory:
+
+```powershell
+UwUConverter convert ".\photo.tif" -t webp --output-dir ".\converted"
+```
+
+Add a suffix:
+
+```powershell
+UwUConverter convert ".\photo.tif" -t webp --suffix "_small"
+```
+
+Overwrite an existing output:
+
+```powershell
+UwUConverter convert ".\photo.tif" -t webp --force
+```
+
+Delete the source after successful conversion:
+
+```powershell
+UwUConverter convert ".\photo.tif" -t webp --delete-source
+```
+
+## CLI Batch Conversion
+
+Create a sibling output folder:
+
+```powershell
+UwUConverter batch ".\Pictures" -c image -t webp -m folder
+```
+
+Place outputs beside originals:
+
+```powershell
+UwUConverter batch ".\Pictures" -c image -t webp -m beside
+```
+
+Replace originals:
+
+```powershell
+UwUConverter batch ".\Pictures" -c image -t webp -m replace
+```
+
+Extract OPUS audio from all matching videos:
+
+```powershell
+UwUConverter batch ".\Videos" -c video -t opus -m folder
+```
+
+Create a log:
+
+```powershell
+UwUConverter batch ".\Pictures" -c image -t webp --log
+```
+
+Quiet mode:
+
+```powershell
+UwUConverter batch ".\Pictures" -c image -t webp --quiet
+```
+
+## CLI Debug Mode
+
+By default, CLI failures print a concise error.
+
+For a traceback:
+
+```powershell
+UwUConverter --debug convert ".\broken.mkv" --to mp4
+```
+
+Ctrl+C exits with:
+
+```text
+Cancelled.
+```
+
+and exit code `130`.
+
+## CLI Startup
+
+Converters are loaded lazily.
+
+For example, image or video commands do not load the PDF conversion libraries at startup.
+
+This avoids unrelated PyMuPDF/`fitz` warnings and improves CLI startup time.
+
+# Windows Installation
+
+The installer places the application under:
 
 ```text
 %LOCALAPPDATA%\Programs\UwUConverter
 ```
 
-The context-menu icon is copied to:
+The GUI executable is:
 
 ```text
-%LOCALAPPDATA%\UwUConverter\icon.ico
+%LOCALAPPDATA%\Programs\UwUConverter\UwUConverter.exe
 ```
 
-### No Terminal Windows
-
-Source-mode context-menu actions use `pythonw.exe`.
-
-Packaged releases should build both executables with PyInstaller's `--windowed` option:
+The CLI executable is:
 
 ```text
-UwUConverter.exe
-UwUConverterBatch.exe
+%LOCALAPPDATA%\Programs\UwUConverter\cli\UwUConverter.exe
 ```
 
-The normal converter handles single-file actions and menu installation.
+Only the `cli` directory is added to the current user's PATH.
 
-The batch executable opens the graphical folder converter and progress window.
+This means:
 
-## Linux Support
+```powershell
+UwUConverter
+```
 
-Linux integration depends on the file manager rather than only the desktop environment.
+runs the CLI instead of the GUI.
+
+After installation, open a new PowerShell or Command Prompt window before testing the command because already-open terminals keep their previous PATH environment.
+
+Test:
+
+```powershell
+UwUConverter --version
+UwUConverter formats
+```
+
+## PowerShell Current-Directory Behavior
+
+PowerShell does not automatically execute programs from the current directory by filename alone.
+
+If you are testing an unpacked executable directly from the current directory, use:
+
+```powershell
+.\UwUConverter.exe --help
+```
+
+not:
+
+```powershell
+UwUConverter.exe --help
+```
+
+Once installed and added to PATH, use:
+
+```powershell
+UwUConverter --help
+```
+
+from any directory.
+
+# Windows Build
+
+The project uses separate GUI and CLI executables.
+
+The GUI executables use the Windows GUI subsystem so they do not open terminal windows.
+
+The CLI intentionally uses the console subsystem.
+
+Build with:
+
+```text
+build_windows.bat
+```
+
+The final installation layout should include:
+
+```text
+UwUConverter/
+├── UwUConverter.exe
+├── UwUConverterBatch.exe
+├── cli/
+│   └── UwUConverter.exe
+└── _internal/
+```
+
+Compile the installer with Inno Setup:
+
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer.iss"
+```
+
+The installer explicitly adds:
+
+```text
+%LOCALAPPDATA%\Programs\UwUConverter\cli
+```
+
+to the user's PATH.
+
+It also removes that PATH entry during uninstall.
+
+# Linux Support
+
+Linux integration depends on the file manager.
 
 Current support:
 
-| Desktop or setup | File manager | Integration |
-|---|---|---|
-| KDE Plasma | Dolphin | Service menu |
-| Hyprland with Dolphin | Dolphin | Service menu |
-| GNOME | Nautilus | Scripts submenu |
-| Cinnamon | Nemo | Scripts submenu |
-| MATE | Caja | Scripts submenu |
-| Other desktop with a supported file manager | Dolphin, Nautilus, Nemo, or Caja | Supported |
-| XFCE default setup | Thunar | Not currently integrated |
-| LXQt default setup | PCManFM-Qt | Not currently integrated |
+| File manager | Support |
+| --- | --- |
+| Dolphin | Yes |
+| Nautilus | Yes |
+| Nemo | Yes |
+| Caja | Yes |
+| Thunar | Not yet |
+| PCManFM / PCManFM-Qt | Not yet |
 
-The converter can still be run manually on unsupported desktops.
+Hyprland itself is not a file manager. UwUConverter works under Hyprland when used with a supported file manager such as Dolphin.
 
-### Dolphin
+## Dolphin
 
-The batch GUI service menu is installed at:
+The current service menu is installed under:
 
 ```text
-~/.local/share/kio/servicemenus/uwuconverter-batch-gui.desktop
+~/.local/share/kio/servicemenus/
 ```
 
-Right-click a folder and select:
+The folder action opens the same batch GUI used on Windows.
 
-```text
-Batch Convert With UwUConverter
-```
-
-### Nautilus
+## Nautilus
 
 Scripts are installed under:
 
@@ -459,7 +589,7 @@ Scripts are installed under:
 ~/.local/share/nautilus/scripts/UwUConverter/
 ```
 
-### Nemo
+## Nemo
 
 Scripts are installed under:
 
@@ -467,7 +597,7 @@ Scripts are installed under:
 ~/.local/share/nemo/scripts/UwUConverter/
 ```
 
-### Caja
+## Caja
 
 Scripts are installed under:
 
@@ -475,34 +605,25 @@ Scripts are installed under:
 ~/.config/caja/scripts/UwUConverter/
 ```
 
-### Linux Menu Cleanup
+## Linux Menu Cleanup
 
-Every Linux installation begins by removing older UwUConverter-generated integrations.
+Installation performs cleanup before recreating menu entries.
 
-This removes:
+This removes stale UwUConverter-generated integration files from previous versions.
 
-- Old nested Dolphin batch menus
-- Old Dolphin conversion menus
-- Older batch GUI service-menu files
-- Old Nautilus scripts
-- Old Nemo scripts
-- Old Caja scripts
-
-Only the current integration is recreated.
-
-To clean the Linux menus manually:
+Manual cleanup:
 
 ```bash
 python3 cleanup_linux_menus.py
 ```
 
-To uninstall all current and older UwUConverter Linux menu entries:
+Uninstall:
 
 ```bash
 python3 Converter.py --uninstall
 ```
 
-Check remaining Dolphin entries:
+For Dolphin, check remaining entries with:
 
 ```bash
 find ~/.local/share/kio/servicemenus \
@@ -511,89 +632,132 @@ find ~/.local/share/kio/servicemenus \
   -print
 ```
 
-After uninstalling, the command should print nothing.
+After uninstalling, this should return nothing.
 
-### Restarting Dolphin
+# Linux CLI Installation
 
-When Dolphin does not refresh automatically:
+The Linux installer creates:
 
-```bash
-kquitapp6 dolphin
-dolphin &
+```text
+~/.local/bin/UwUConverter
 ```
 
-Some installations may use:
+The application itself is stored under:
 
-```bash
-dolphin --quit
-dolphin &
+```text
+~/.local/share/UwUConverter
 ```
 
-## Running From Source
+Install:
 
-### Requirements
+```bash
+chmod +x install.sh
+./install.sh
+```
 
-- Python 3.10 or newer
-- Dependencies from `requirements.txt`
-- Tkinter for the batch GUI
+If `~/.local/bin` is not already in PATH:
 
-Install Python dependencies:
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Then:
+
+```bash
+UwUConverter --help
+UwUConverter convert "./photo.tif" --to webp
+UwUConverter batch "./Pictures" -c image -t webp
+```
+
+# Linux Build Size
+
+The Linux package can currently be large.
+
+A build around several hundred megabytes is possible because PyInstaller may bundle large Python and native dependencies such as:
+
+- Python runtime
+- PyAV and FFmpeg libraries
+- Pillow
+- rawpy and LibRaw
+- pandas
+- NumPy
+- openpyxl
+- xlrd
+- xlwt
+- pyxlsb
+- reportlab
+- pdf2docx
+- PyMuPDF
+- python-docx
+- odfpy
+- Tcl/Tk
+
+Another major source of size is duplicate dependency bundles when the GUI, batch GUI, and CLI are built independently.
+
+Future packaging optimization should move toward a shared `onedir` dependency bundle so the runtime and large libraries are stored once rather than duplicated between launchers.
+
+Removing pandas from the spreadsheet converter is another likely size reduction because pandas normally pulls in NumPy and other large dependencies.
+
+The current priority is functionality and compatibility rather than minimum package size.
+
+To inspect the largest files in a Linux build:
+
+```bash
+du -ah dist/UwUConverterGUI | sort -h | tail -40
+```
+
+To compare top-level build sizes:
+
+```bash
+du -sh dist/*
+```
+
+# Running From Source
+
+Install dependencies:
 
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Windows
+## Windows
 
-Install or refresh the context menus:
+Install or refresh menus:
 
 ```powershell
 python .\Converter.py
 ```
 
-Run a conversion manually:
+Run CLI:
 
 ```powershell
-python .\Converter.py "D:\Videos\example.mkv" "WEBM"
+python .\cli.py --help
 ```
 
-Open the batch GUI manually:
+Open batch GUI directly:
 
 ```powershell
-pythonw .\BatchLauncher.py "D:\Pictures"
+pythonw .\BatchLauncher.py ".\Pictures"
 ```
 
-Remove the context-menu entries:
+Uninstall menu integration:
 
 ```powershell
 python .\Converter.py --uninstall
 ```
 
-Clean old folder-menu experiments:
+## Linux
 
-```powershell
-python .\cleanup_old_folder_menu.py
-```
+Install Tkinter if required.
 
-Restart Explorer:
-
-```powershell
-taskkill /f /im explorer.exe
-start explorer.exe
-```
-
-### Linux
-
-Some distributions package Tkinter separately.
-
-Arch, CachyOS, and other Arch-based systems:
+Arch / CachyOS:
 
 ```bash
 sudo pacman -S tk
 ```
 
-Ubuntu and Debian-based systems:
+Ubuntu / Debian:
 
 ```bash
 sudo apt install python3-tk
@@ -611,309 +775,137 @@ Install or refresh integrations:
 python3 Converter.py
 ```
 
-Run a conversion manually:
+Run CLI:
 
 ```bash
-python3 Converter.py "/home/user/Videos/example.mkv" "WEBM"
+python3 cli.py --help
 ```
 
-Open the batch GUI manually:
+Open batch GUI:
 
 ```bash
-python3 BatchLauncher.py "/home/user/Pictures"
+python3 BatchLauncher.py "./Pictures"
 ```
 
-Remove integrations:
-
-```bash
-python3 Converter.py --uninstall
-```
-
-## Project Structure
+# Project Structure
 
 ```text
 Converter.py
 BatchLauncher.py
+cli.py
+
 batch_converter.py
 batch_dialog.py
 batch_menus.py
-platform_menu.py
-make_key.py
-linux_menu.py
-cleanup_old_folder_menu.py
-cleanup_linux_menus.py
-file_types.py
+
 video_converter.py
 audio_converter.py
 image_converter.py
 compression.py
 document_converter.py
 spreadsheet_converter.py
+
+file_types.py
+platform_menu.py
+make_key.py
+linux_menu.py
+
+cleanup_old_folder_menu.py
+cleanup_linux_menus.py
+
+UwUConverter.spec
+UwUConverterBatch.spec
+UwUConverterCLI.spec
+
+build_windows.bat
+build_linux.sh
+installer.iss
+
+install_linux.sh
+uninstall_linux.sh
+
 requirements.txt
 UwUConverter.ico
-installer.iss
 ```
 
-### Main Files
+# Main Modules
 
-`Converter.py`
+### `Converter.py`
 
-Routes single-file actions, compression actions, batch actions, installation, and uninstall operations.
+Handles GUI-side routing, right-click actions, installation, and uninstall operations.
 
-`BatchLauncher.py`
+### `cli.py`
 
-Opens the graphical batch converter.
+Provides the installable `UwUConverter` terminal command.
 
-`batch_converter.py`
+### `BatchLauncher.py`
 
-Streams folder contents, converts matching files, tracks progress, handles cancellation, and optionally writes logs.
+Launches the graphical batch converter.
 
-`batch_dialog.py`
+### `batch_dialog.py`
 
-Provides the batch GUI and progress bar.
+Provides the batch GUI, progress bar, counters, cancellation, and optional log checkbox.
 
-`batch_menus.py`
+### `batch_converter.py`
 
-Contains batch categories and supported output formats.
+Streams folders, performs per-file conversion, tracks progress, handles safe replacement, and optionally writes logs.
 
-`file_types.py`
+### `file_types.py`
 
-Contains single-file extension menus and actions.
+Defines single-file context-menu actions.
 
-`platform_menu.py`
+### `platform_menu.py`
 
-Selects Windows or Linux integration at runtime.
+Selects Windows or Linux menu integration.
 
-`make_key.py`
+### `make_key.py`
 
 Creates and removes Windows Registry menu entries.
 
-`linux_menu.py`
+### `linux_menu.py`
 
-Creates and removes Dolphin, Nautilus, Nemo, and Caja integrations.
+Creates and removes supported Linux file-manager integrations.
 
-`video_converter.py`
-
-Handles video containers and transcoding.
-
-`audio_converter.py`
-
-Handles audio conversion and audio extraction.
-
-`image_converter.py`
-
-Handles ordinary images and camera RAW input.
-
-`compression.py`
+### `compression.py`
 
 Handles image and video compression.
 
-`document_converter.py`
+# Troubleshooting
 
-Handles document conversion.
+## `UwUConverter` is not recognized on Windows
 
-`spreadsheet_converter.py`
-
-Handles spreadsheet conversion.
-
-## Building for Windows
-
-Build the main executable as a windowed `onedir` application:
+Check that the CLI exists:
 
 ```powershell
-pyinstaller --clean --noconfirm --onedir ^
-  --windowed ^
-  --name UwUConverter ^
-  --icon UwUConverter.ico ^
-  --add-data "UwUConverter.ico;." ^
-  Converter.py
+Test-Path "$env:LOCALAPPDATA\Programs\UwUConverter\cli\UwUConverter.exe"
 ```
 
-Build the batch GUI as a windowed single-file executable:
+Check the user PATH:
 
 ```powershell
-pyinstaller --clean --noconfirm --onefile ^
-  --windowed ^
-  --name UwUConverterBatch ^
-  --icon UwUConverter.ico ^
-  BatchLauncher.py
+[Environment]::GetEnvironmentVariable("Path", "User") -split ";" |
+    Where-Object { $_ -like "*UwUConverter*" }
 ```
 
-Copy the batch executable into the main build folder:
-
-```powershell
-Copy-Item `
-  .\dist\UwUConverterBatch.exe `
-  .\dist\UwUConverter\UwUConverterBatch.exe
-```
-
-The final folder should contain:
+Expected entry:
 
 ```text
-dist\UwUConverter\
-├── UwUConverter.exe
-├── UwUConverterBatch.exe
-└── _internal\
+%LOCALAPPDATA%\Programs\UwUConverter\cli
 ```
 
-Test menu installation:
+Then close the current terminal and open a new one.
+
+## Batch path contains a stray quote
+
+The CLI defensively trims invalid trailing double quotes from Windows paths before resolving them.
+
+This command is valid:
 
 ```powershell
-.\dist\UwUConverter\UwUConverter.exe
+UwUConverter batch -c image -t webp -m folder ".\random pics"
 ```
 
-### Building the Installer
-
-Compile `installer.iss` with Inno Setup 6.
-
-The installer script should copy the complete PyInstaller folder:
-
-```text
-dist\UwUConverter\
-```
-
-The installer output is normally created under:
-
-```text
-installer-output\UwUConverter-Setup.exe
-```
-
-## Building for Linux
-
-Linux executables must be built on Linux.
-
-Build the main executable:
-
-```bash
-pyinstaller \
-  --clean \
-  --noconfirm \
-  --onedir \
-  --windowed \
-  --name UwUConverter \
-  --add-data "UwUConverter.ico:." \
-  Converter.py
-```
-
-Build the batch GUI as a windowed single-file executable:
-
-```bash
-pyinstaller \
-  --clean \
-  --noconfirm \
-  --onefile \
-  --windowed \
-  --name UwUConverterBatch \
-  BatchLauncher.py
-```
-
-Copy it into the main build folder:
-
-```bash
-cp \
-  dist/UwUConverterBatch \
-  dist/UwUConverter/UwUConverterBatch
-```
-
-Make both launchers executable:
-
-```bash
-chmod +x dist/UwUConverter/UwUConverter
-chmod +x dist/UwUConverter/UwUConverterBatch
-```
-
-Test menu installation:
-
-```bash
-./dist/UwUConverter/UwUConverter
-```
-
-Create the release archive:
-
-```bash
-cd dist
-tar -czf UwUConverter-Linux-x64.tar.gz UwUConverter
-```
-
-A Linux build created on an older base distribution generally has a better chance of working on newer distributions.
-
-Linux releases should remain marked experimental until tested across multiple distributions, file managers, and desktop environments.
-
-## Updating File-Manager Menus
-
-After changing `file_types.py`, `batch_menus.py`, or platform menu code, reinstall the integrations.
-
-Windows:
-
-```powershell
-python .\Converter.py
-```
-
-Linux:
-
-```bash
-python3 Converter.py
-```
-
-## Troubleshooting
-
-### Windows context menu does not appear
-
-Re-register the menu:
-
-```powershell
-python .\Converter.py
-```
-
-Restart Explorer:
-
-```powershell
-taskkill /f /im explorer.exe
-start explorer.exe
-```
-
-### Windows still uses an old folder command
-
-Clean older entries:
-
-```powershell
-python .\cleanup_old_folder_menu.py
-python .\Converter.py
-```
-
-Then restart Explorer.
-
-### A terminal window appears on Windows
-
-Confirm that source-mode Registry commands use `pythonw.exe`.
-
-For packaged releases, confirm that both executables were built with `--windowed`.
-
-### Batch GUI does not open on Windows
-
-Confirm that `pythonw.exe` exists beside the installed Python executable when running from source.
-
-For packaged builds, confirm this file exists beside the main executable:
-
-```text
-UwUConverterBatch.exe
-```
-
-### Batch GUI does not open on Linux
-
-Install Tkinter for the distribution and try launching directly:
-
-```bash
-python3 BatchLauncher.py "/path/to/folder"
-```
-
-For packaged builds, confirm this file exists:
-
-```text
-UwUConverterBatch
-```
-
-### Old Dolphin batch menus remain
+## Old Dolphin actions remain
 
 Run:
 
@@ -922,67 +914,36 @@ python3 cleanup_linux_menus.py
 python3 Converter.py
 ```
 
-Restart Dolphin afterward.
+Then restart Dolphin.
 
-### Compression does not reach the exact requested size
+## Windows terminal still appears for GUI conversion
 
-Compression percentages are targets. Codecs, containers, and source characteristics affect the final result.
+Make sure the installed GUI executable was rebuilt as a windowed PyInstaller application.
 
-### Lossless compression barely changes the size
+Changing the Python source alone cannot change the subsystem of an already-built executable.
 
-The original may already be efficiently compressed.
+## Compression does not hit the exact requested size
 
-### Some batch files are skipped
+Compression percentages are targets.
 
-A destination file may already exist, the file may not match the selected category, or the source may already use the selected output format.
+Codec limitations, minimum useful bitrates, container overhead, and existing compression can affect the final size.
 
-Check the optional log for exact reasons.
+## PDF warning appears on unrelated CLI commands
 
-### A document loses formatting
+The current CLI uses lazy imports specifically to avoid loading document conversion dependencies when they are not needed.
 
-Document conversion focuses mainly on text rather than exact layout reconstruction.
+If the warning still appears, confirm that the installed CLI was rebuilt from the latest source.
 
-### A spreadsheet loses formulas or formatting
+# Development Status
 
-Spreadsheet conversion focuses mainly on cell values.
-
-### A RAW file fails
-
-The file may not be recognized by rawpy and LibRaw, or it may be headerless raw pixel data rather than a supported camera RAW format.
-
-## Reporting Bugs
-
-Include:
-
-- Operating system
-- Linux distribution, when applicable
-- Desktop environment
-- File manager
-- Source or packaged build
-- Input extension
-- Selected conversion action
-- Full error message or traceback
-- Source codecs for media issues
-- Whether the issue affects single conversion, batch conversion, or both
-- Whether logging was enabled
-- Any formatting or workbook features that were lost
-
-## Contributing
-
-See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development setup, project structure, testing expectations, and pull request guidance.
-
-## License
-
-UwUConverter is licensed under the MIT License.
-
-You may use, copy, modify, distribute, sublicense, and sell copies of the software, provided that the original copyright and license notice are preserved.
-
-The software is provided without warranty. See the `LICENSE` file for the complete terms.
-
-## Development Status
-
-UwUConverter is a learning project under active development.
+UwUConverter is under active development.
 
 Windows is currently the most tested platform.
 
-Linux integration and packaged Linux releases are experimental and still require broader testing across distributions, desktop environments, file managers, codecs, and unusual file formats.
+Linux support is experimental and still needs broader testing across distributions, file managers, codecs, and package configurations.
+
+# License
+
+UwUConverter is licensed under the MIT License.
+
+See `LICENSE` for the full license text.
