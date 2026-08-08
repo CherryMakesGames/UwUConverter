@@ -4,7 +4,7 @@ import pathlib
 import sys
 import traceback
 
-VERSION = "0.11-cli"
+VERSION = "1.5"
 
 VIDEO_INPUTS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 VIDEO_OUTPUTS = {"mp4", "mkv", "mov", "avi", "webm"}

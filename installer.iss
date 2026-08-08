@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "0.11"
+#define MyAppVersion "1.5"
 #define MyAppPublisher "Pink Sakura Studios"
 
 [Setup]
