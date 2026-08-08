@@ -18,7 +18,6 @@ WizardStyle=modern
 ChangesEnvironment=yes
 UninstallDisplayIcon={app}\UwUConverter.exe
 
-
 [Files]
 Source: "dist\UwUConverter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

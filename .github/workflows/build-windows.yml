@@ -1,0 +1,117 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Clean old build folders
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force dist-cli -ErrorAction SilentlyContinue
+
+      - name: Build main GUI
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            --onedir `
+            --windowed `
+            --name UwUConverter `
+            --icon UwUConverter.ico `
+            --add-data "UwUConverter.ico;." `
+            Converter.py
+
+      - name: Build batch GUI
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            --onefile `
+            --windowed `
+            --name UwUConverterBatch `
+            --icon UwUConverter.ico `
+            BatchLauncher.py
+
+      - name: Build CLI
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            --onefile `
+            --name UwUConverter `
+            --distpath dist-cli `
+            cli.py
+
+      - name: Assemble Windows package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ".\dist\UwUConverter\cli" | Out-Null
+          Copy-Item ".\dist\UwUConverterBatch.exe" ".\dist\UwUConverter\UwUConverterBatch.exe" -Force
+          Copy-Item ".\dist-cli\UwUConverter.exe" ".\dist\UwUConverter\cli\UwUConverter.exe" -Force
+
+      - name: Verify build
+        shell: pwsh
+        run: |
+          $gui = ".\dist\UwUConverter\UwUConverter.exe"
+          $batch = ".\dist\UwUConverter\UwUConverterBatch.exe"
+          $cli = ".\dist\UwUConverter\cli\UwUConverter.exe"
+
+          if (!(Test-Path $gui)) { throw "Missing GUI executable: $gui" }
+          if (!(Test-Path $batch)) { throw "Missing batch GUI executable: $batch" }
+          if (!(Test-Path $cli)) { throw "Missing CLI executable: $cli" }
+
+          & $cli --version
+          & $cli --help
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer.iss"'
+
+      - name: Upload portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: UwUConverter-Windows-Portable
+          path: dist/UwUConverter/
+          if-no-files-found: error
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: UwUConverter-Windows-Installer
+          path: installer-output/*.exe
+          if-no-files-found: error

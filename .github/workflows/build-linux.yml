@@ -1,0 +1,85 @@
+name: Build Linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y             python3-tk             libgl1             libglib2.0-0             libsm6             libxext6             libxrender1
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Clean old build folders
+        run: rm -rf build dist dist-cli
+
+      - name: Build main GUI
+        run: |
+          python -m PyInstaller             --clean             --noconfirm             --onedir             --windowed             --name UwUConverterGUI             --add-data "UwUConverter.ico:."             Converter.py
+
+      - name: Build batch GUI
+        run: |
+          python -m PyInstaller             --clean             --noconfirm             --onefile             --windowed             --name UwUConverterBatch             BatchLauncher.py
+
+      - name: Build CLI
+        run: |
+          python -m PyInstaller             --clean             --noconfirm             --onefile             --name UwUConverter             --distpath dist-cli             cli.py
+
+      - name: Assemble Linux package
+        run: |
+          mkdir -p dist/UwUConverterGUI/cli
+          cp dist/UwUConverterBatch dist/UwUConverterGUI/UwUConverterBatch
+          cp dist-cli/UwUConverter dist/UwUConverterGUI/cli/UwUConverter
+          cp install_linux.sh dist/UwUConverterGUI/install.sh
+          cp uninstall_linux.sh dist/UwUConverterGUI/uninstall.sh
+
+          chmod +x dist/UwUConverterGUI/UwUConverterGUI
+          chmod +x dist/UwUConverterGUI/UwUConverterBatch
+          chmod +x dist/UwUConverterGUI/cli/UwUConverter
+          chmod +x dist/UwUConverterGUI/install.sh
+          chmod +x dist/UwUConverterGUI/uninstall.sh
+
+      - name: Verify build
+        run: |
+          test -x dist/UwUConverterGUI/UwUConverterGUI
+          test -x dist/UwUConverterGUI/UwUConverterBatch
+          test -x dist/UwUConverterGUI/cli/UwUConverter
+
+          dist/UwUConverterGUI/cli/UwUConverter --version
+          dist/UwUConverterGUI/cli/UwUConverter --help
+
+      - name: Create tar.gz
+        run: |
+          cd dist
+          tar -czf UwUConverter-Linux-x64.tar.gz UwUConverterGUI
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: UwUConverter-Linux-x64
+          path: dist/UwUConverter-Linux-x64.tar.gz
+          if-no-files-found: error
