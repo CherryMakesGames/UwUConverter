@@ -35,8 +35,8 @@ def compress_video_lossless(file_path):
 
 
 def compress_video_by_percent(file_path, percent):
-    if percent not in (25, 50, 75):
-        raise ValueError("Video compression percent must be 25, 50, or 75")
+    if not 1 <= percent <= 99:
+        raise ValueError("Video compression percent must be between 1 and 99")
 
     target_fraction = 1.0 - (percent / 100.0)
     output_file_path = get_output_path(file_path, f"_compressed_{percent}")
@@ -191,8 +191,8 @@ def compress_image_lossless(file_path):
 
 
 def compress_image_by_percent(file_path, percent):
-    if percent not in (25, 50, 75):
-        raise ValueError("Image compression percent must be 25, 50, or 75")
+    if not 1 <= percent <= 99:
+        raise ValueError("Image compression percent must be between 1 and 99")
 
     extension = pathlib.Path(file_path).suffix.lower()
     output_file_path = get_output_path(file_path, f"_compressed_{percent}")

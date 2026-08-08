@@ -4,13 +4,6 @@ import time
 import traceback
 import uuid
 
-from audio_converter import convert_audio
-from document_converter import convert_document
-from image_converter import convert_image
-from spreadsheet_converter import convert_spreadsheet
-from video_converter import convert_video
-
-
 CATEGORY_EXTENSIONS = {
     "image": {
         ".png", ".jpg", ".jpeg", ".webp", ".ico",
@@ -446,6 +439,8 @@ def dispatch_conversion(
     output_string = str(output_path)
 
     if category == "image":
+        from image_converter import convert_image
+
         convert_image(
             source_string,
             output_string,
@@ -461,12 +456,16 @@ def dispatch_conversion(
             "flac",
             "opus"
         }:
+            from audio_converter import convert_audio
+
             convert_audio(
                 source_string,
                 output_string,
                 output_format
             )
         else:
+            from video_converter import convert_video
+
             convert_video(
                 source_string,
                 output_string,
@@ -475,6 +474,8 @@ def dispatch_conversion(
         return
 
     if category == "audio":
+        from audio_converter import convert_audio
+
         convert_audio(
             source_string,
             output_string,
@@ -483,6 +484,8 @@ def dispatch_conversion(
         return
 
     if category == "document":
+        from document_converter import convert_document
+
         document_format = output_format
 
         if (
@@ -499,6 +502,8 @@ def dispatch_conversion(
         return
 
     if category == "spreadsheet":
+        from spreadsheet_converter import convert_spreadsheet
+
         convert_spreadsheet(
             source_string,
             output_string,

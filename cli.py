@@ -1,28 +1,8 @@
 import argparse
+import os
 import pathlib
 import sys
 import traceback
-
-import av
-
-import platform_menu
-from audio_converter import convert_audio
-from batch_converter import batch_convert_folder
-from compression import (
-    compress_image_by_percent,
-    compress_image_lossless,
-    compress_video_by_percent,
-    compress_video_lossless,
-    get_output_path,
-)
-from document_converter import convert_document
-from file_types import file_types
-from image_converter import convert_image
-from spreadsheet_converter import convert_spreadsheet
-from video_converter import convert_video
-
-
-av.logging.set_level(av.logging.ERROR)
 
 VERSION = "0.11-cli"
 
@@ -149,8 +129,8 @@ def build_parser():
     compression_mode.add_argument(
         "--percent",
         type=int,
-        choices=(25, 50, 75),
-        help="Target a 25%%, 50%%, or 75%% file-size reduction."
+        metavar="1-99",
+        help="Target any file-size reduction from 1 to 99 percent."
     )
     compress.add_argument(
         "-f", "--force",
@@ -215,6 +195,28 @@ def build_parser():
     return parser
 
 
+def clean_cli_path(value):
+    # Windows filenames cannot contain a double quote, so trimming a
+    # stray quote here is safe and makes copied PowerShell paths more
+    # forgiving. Matching single quotes are also stripped.
+    value = str(value).strip()
+
+    if os.name == "nt":
+        value = value.strip('"')
+
+        if (
+            len(value) >= 2
+            and value[0] == "'"
+            and value[-1] == "'"
+        ):
+            value = value[1:-1]
+
+        # Defensively handle a single accidental trailing quote too.
+        value = value.rstrip('"')
+
+    return value
+
+
 def normalize_format(value):
     return value.lower().lstrip(".")
 
@@ -228,7 +230,9 @@ def default_output_path(
     extension = "." + output_format
 
     parent = (
-        pathlib.Path(output_dir).expanduser().resolve()
+        pathlib.Path(
+            clean_cli_path(output_dir)
+        ).expanduser().resolve()
         if output_dir
         else input_path.parent
     )
@@ -256,7 +260,7 @@ def ensure_output_available(path, force):
 
 def convert_command(args):
     source = pathlib.Path(
-        args.input
+        clean_cli_path(args.input)
     ).expanduser().resolve()
 
     if not source.is_file():
@@ -273,7 +277,7 @@ def convert_command(args):
 
     if args.output:
         output = pathlib.Path(
-            args.output
+            clean_cli_path(args.output)
         ).expanduser().resolve()
     else:
         output = default_output_path(
@@ -300,12 +304,16 @@ def convert_command(args):
 
     if extension in VIDEO_INPUTS:
         if output_format in VIDEO_OUTPUTS:
+            from video_converter import convert_video
+
             convert_video(
                 str(source),
                 str(output),
                 output_format
             )
         elif output_format in AUDIO_OUTPUTS:
+            from audio_converter import convert_audio
+
             convert_audio(
                 str(source),
                 str(output),
@@ -318,6 +326,8 @@ def convert_command(args):
             )
 
     elif extension in AUDIO_INPUTS:
+        from audio_converter import convert_audio
+
         if output_format not in AUDIO_OUTPUTS:
             raise ValueError(
                 f"Unsupported output '{output_format}' "
@@ -331,6 +341,8 @@ def convert_command(args):
         )
 
     elif extension in IMAGE_INPUTS:
+        from image_converter import convert_image
+
         if output_format not in IMAGE_OUTPUTS:
             raise ValueError(
                 f"Unsupported output '{output_format}' "
@@ -344,6 +356,8 @@ def convert_command(args):
         )
 
     elif extension in DOCUMENT_INPUTS:
+        from document_converter import convert_document
+
         if output_format not in DOCUMENT_OUTPUTS:
             raise ValueError(
                 f"Unsupported output '{output_format}' "
@@ -369,6 +383,8 @@ def convert_command(args):
         )
 
     elif extension in SPREADSHEET_INPUTS:
+        from spreadsheet_converter import convert_spreadsheet
+
         if output_format not in SPREADSHEET_OUTPUTS:
             raise ValueError(
                 f"Unsupported output '{output_format}' "
@@ -400,8 +416,24 @@ def convert_command(args):
 
 
 def compress_command(args):
+    if (
+        not args.lossless
+        and not 1 <= args.percent <= 99
+    ):
+        raise ValueError(
+            "--percent must be between 1 and 99."
+        )
+
+    from compression import (
+        compress_image_by_percent,
+        compress_image_lossless,
+        compress_video_by_percent,
+        compress_video_lossless,
+        get_output_path,
+    )
+
     source = pathlib.Path(
-        args.input
+        clean_cli_path(args.input)
     ).expanduser().resolve()
 
     if not source.is_file():
@@ -522,6 +554,8 @@ def batch_progress_printer():
 
 
 def batch_command(args):
+    from batch_converter import batch_convert_folder
+
     output_format = normalize_format(
         args.to
     )
@@ -538,7 +572,7 @@ def batch_command(args):
         )
 
     folder = pathlib.Path(
-        args.folder
+        clean_cli_path(args.folder)
     ).expanduser().resolve()
 
     if not folder.is_dir():
@@ -649,6 +683,9 @@ def main(argv=None):
             return formats_command()
 
         if args.command == "install-menu":
+            import platform_menu
+            from file_types import file_types
+
             platform_menu.CreateExtensions(
                 file_types
             )
@@ -659,6 +696,9 @@ def main(argv=None):
             return 0
 
         if args.command == "uninstall-menu":
+            import platform_menu
+            from file_types import file_types
+
             platform_menu.RemoveExtensions(
                 file_types
             )
