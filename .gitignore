@@ -8,3 +8,4 @@ __pycache__
 installer-output
 local.iss
 *.zip
+dist-cli
