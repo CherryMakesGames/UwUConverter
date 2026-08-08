@@ -1,46 +1,86 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "1.3"
+#define MyAppVersion "0.11"
 #define MyAppPublisher "Pink Sakura Studios"
-#define MyAppExeName "UwUConverter.exe"
 
-[Setup] 
-AppId={{7B6F193A-8D9C-42E1-81E8-E9E85C796940}
-Uninstallable=yes
-CreateUninstallRegKey=yes
-UninstallDisplayName=UwUConverter
+[Setup]
+AppId={{8D811A80-60D1-49B5-A9D5-1E9E3A54D84A}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-
 DefaultDirName={localappdata}\Programs\UwUConverter
-DefaultGroupName={#MyAppName}
-
+DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=installer-output
 OutputBaseFilename=UwUConverter-Setup
-
-SetupIconFile=UwUConverter.ico
-UninstallDisplayIcon={app}\{#MyAppExeName}
-
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+ChangesEnvironment=yes
+UninstallDisplayIcon={app}\UwUConverter.exe
+
 
 [Files]
 Source: "dist\UwUConverter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-[Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
-
-[Icons]
-Name: "{group}\UwUConverter"; Filename: "{app}\{#MyAppExeName}"
-Name: "{userdesktop}\UwUConverter"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Install UwUConverter context menus"; Flags: runhidden waituntilterminated
+Filename: "{app}\UwUConverter.exe"; Parameters: ""; Flags: runhidden waituntilterminated postinstall skipifsilent
 
 [UninstallRun]
-Filename: "{app}\{#MyAppExeName}"; \
-    Parameters: "--uninstall"; \
-    Flags: waituntilterminated runhidden skipifdoesntexist; \
-    RunOnceId: "RemoveUwUConverterMenus"
+Filename: "{app}\UwUConverter.exe"; Parameters: "--uninstall"; Flags: runhidden waituntilterminated
+
+[Code]
+procedure AddCliToPath();
+var
+  P, C: String;
+begin
+  C := ExpandConstant('{app}\cli');
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', P) then
+    P := '';
+
+  if Pos(';' + Uppercase(C) + ';', ';' + Uppercase(P) + ';') = 0 then
+  begin
+    if (P <> '') and (P[Length(P)] <> ';') then
+      P := P + ';';
+    P := P + C;
+    RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', P);
+  end;
+end;
+
+procedure RemoveCliFromPath();
+var
+  P, C, N, Part: String;
+  Parts: TArrayOfString;
+  I: Integer;
+begin
+  C := ExpandConstant('{app}\cli');
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', P) then
+    exit;
+
+  Parts := SplitString(P, ';');
+  N := '';
+
+  for I := 0 to GetArrayLength(Parts) - 1 do
+  begin
+    Part := Parts[I];
+    if (Part <> '') and (CompareText(Part, C) <> 0) then
+    begin
+      if N <> '' then
+        N := N + ';';
+      N := N + Part;
+    end;
+  end;
+
+  RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', N);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    AddCliToPath();
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    RemoveCliFromPath();
+end;
