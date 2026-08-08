@@ -37,6 +37,10 @@ IMAGE_OUTPUTS = {
     "png", "jpg", "jpeg", "webp", "ico", "tif", "tiff", "pdf"
 }
 
+MODEL_OUTPUTS = {
+    "obj", "stl", "ply", "glb"
+}
+
 
 def ConvertFile(file_path, convert_type):
     action = convert_type.lower()
@@ -94,6 +98,28 @@ def ConvertFile(file_path, convert_type):
             file_path,
             output_base + "." + action,
             action
+        )
+        return
+
+
+    model_actions = {
+        "modelobj": (".obj", "obj"),
+        "modelstl": (".stl", "stl"),
+        "modelply": (".ply", "ply"),
+        "modelglb": (".glb", "glb"),
+    }
+
+    if action in model_actions:
+        from model_converter import convert_model
+
+        suffix, output_format = (
+            model_actions[action]
+        )
+
+        convert_model(
+            file_path,
+            output_base + suffix,
+            output_format
         )
         return
 

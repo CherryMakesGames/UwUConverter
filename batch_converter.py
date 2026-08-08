@@ -22,6 +22,9 @@ CATEGORY_EXTENSIONS = {
         ".xlsx", ".xls", ".xlsb", ".xlsm",
         ".ods", ".csv", ".tsv"
     },
+    "model": {
+        ".obj", ".stl", ".ply", ".glb"
+    },
 }
 
 OUTPUT_EXTENSIONS = {
@@ -55,6 +58,11 @@ OUTPUT_EXTENSIONS = {
     "ods": ".ods",
     "csv": ".csv",
     "tsv": ".tsv",
+
+    "obj": ".obj",
+    "stl": ".stl",
+    "ply": ".ply",
+    "glb": ".glb",
 }
 
 BATCH_FORMAT_VERSION = "all-formats-progress-v3"
@@ -505,6 +513,17 @@ def dispatch_conversion(
         from spreadsheet_converter import convert_spreadsheet
 
         convert_spreadsheet(
+            source_string,
+            output_string,
+            output_format
+        )
+        return
+
+
+    if category == "model":
+        from model_converter import convert_model
+
+        convert_model(
             source_string,
             output_string,
             output_format

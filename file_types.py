@@ -250,6 +250,29 @@ file_types = {
         ])
     ],
 
+
+    # 3D models
+    ".obj": [
+        ("01_stl", "Convert To STL", "MODELSTL"),
+        ("02_ply", "Convert To PLY", "MODELPLY"),
+        ("03_glb", "Convert To GLB", "MODELGLB")
+    ],
+    ".stl": [
+        ("01_obj", "Convert To OBJ", "MODELOBJ"),
+        ("02_ply", "Convert To PLY", "MODELPLY"),
+        ("03_glb", "Convert To GLB", "MODELGLB")
+    ],
+    ".ply": [
+        ("01_obj", "Convert To OBJ", "MODELOBJ"),
+        ("02_stl", "Convert To STL", "MODELSTL"),
+        ("03_glb", "Convert To GLB", "MODELGLB")
+    ],
+    ".glb": [
+        ("01_obj", "Convert To OBJ", "MODELOBJ"),
+        ("02_stl", "Convert To STL", "MODELSTL"),
+        ("03_ply", "Convert To PLY", "MODELPLY")
+    ],
+
     # documents
     ".pdf": [
         ("01_docx", "Convert To DOCX", "DOCXFPDF")

@@ -11,3 +11,4 @@ xlrd
 pyxlsb
 xlwt
 pyinstaller
+trimesh

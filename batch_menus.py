@@ -47,6 +47,15 @@ SPREADSHEET_FORMATS = [
 ]
 
 
+
+MODEL_FORMATS = [
+    ("01_obj", "OBJ", "OBJ"),
+    ("02_stl", "STL", "STL"),
+    ("03_ply", "PLY", "PLY"),
+    ("04_glb", "GLB", "GLB"),
+]
+
+
 def make_modes(category, formats):
     return [
         (
@@ -129,6 +138,14 @@ BATCH_MENUS = [
         make_modes(
             "SPREADSHEET",
             SPREADSHEET_FORMATS
+        )
+    ),
+    (
+        "06_models",
+        "Batch 3D Models",
+        make_modes(
+            "MODEL",
+            MODEL_FORMATS
         )
     ),
 ]

@@ -18,6 +18,7 @@ FORMATS = {
     "spreadsheet": [
         "PDF", "XLSX", "XLS", "ODS", "CSV", "TSV"
     ],
+    "model": ["OBJ", "STL", "PLY", "GLB"],
 }
 
 CATEGORY_LABELS = {
@@ -26,6 +27,7 @@ CATEGORY_LABELS = {
     "audio": "Audio",
     "document": "Documents",
     "spreadsheet": "Spreadsheets",
+    "model": "3D Models",
 }
 
 MODE_LABELS = {

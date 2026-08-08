@@ -4,7 +4,7 @@ import pathlib
 import sys
 import traceback
 
-VERSION = "1.5"
+VERSION = "0.11-cli"
 
 VIDEO_INPUTS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 VIDEO_OUTPUTS = {"mp4", "mkv", "mov", "avi", "webm"}
@@ -32,12 +32,20 @@ SPREADSHEET_OUTPUTS = {
     "pdf", "xlsx", "xls", "ods", "csv", "tsv"
 }
 
+MODEL_INPUTS = {
+    ".obj", ".stl", ".ply", ".glb"
+}
+MODEL_OUTPUTS = {
+    "obj", "stl", "ply", "glb"
+}
+
 BATCH_OUTPUTS = {
     "image": IMAGE_OUTPUTS,
     "video": VIDEO_OUTPUTS | AUDIO_OUTPUTS,
     "audio": AUDIO_OUTPUTS,
     "document": DOCUMENT_OUTPUTS,
     "spreadsheet": SPREADSHEET_OUTPUTS,
+    "model": MODEL_OUTPUTS,
 }
 
 
@@ -382,6 +390,22 @@ def convert_command(args):
             document_format
         )
 
+
+    elif extension in MODEL_INPUTS:
+        from model_converter import convert_model
+
+        if output_format not in MODEL_OUTPUTS:
+            raise ValueError(
+                f"Unsupported output '{output_format}' "
+                "for 3D model input."
+            )
+
+        convert_model(
+            str(source),
+            str(output),
+            output_format
+        )
+
     elif extension in SPREADSHEET_INPUTS:
         from spreadsheet_converter import convert_spreadsheet
 
@@ -641,6 +665,11 @@ def formats_command():
             "Spreadsheets",
             SPREADSHEET_INPUTS,
             SPREADSHEET_OUTPUTS
+        ),
+        (
+            "3D Models",
+            MODEL_INPUTS,
+            MODEL_OUTPUTS
         ),
     ]
 
