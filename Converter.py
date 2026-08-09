@@ -101,7 +101,6 @@ def ConvertFile(file_path, convert_type):
         )
         return
 
-
     model_actions = {
         "modelobj": (".obj", "obj"),
         "modelstl": (".stl", "stl"),
