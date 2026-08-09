@@ -219,6 +219,11 @@ def create_dolphin_file_menus(file_types):
         exist_ok=True
     )
 
+    # Dolphin matches service menus by MIME type. Several extensions
+    # can share one MIME type, so creating one .desktop file per
+    # extension can duplicate the same submenu.
+    grouped = {}
+
     for extension, conversions in file_types.items():
         mime_type = MIME_TYPES.get(
             extension.lower()
@@ -234,15 +239,33 @@ def create_dolphin_file_menus(file_types):
         if not actions:
             continue
 
-        safe_extension = (
-            extension.lower()
-            .lstrip(".")
+        grouped.setdefault(
+            mime_type,
+            []
+        )
+
+        existing = set(
+            grouped[mime_type]
+        )
+
+        for action in actions:
+            if action not in existing:
+                grouped[mime_type].append(
+                    action
+                )
+                existing.add(action)
+
+    for mime_type, actions in grouped.items():
+        safe_mime = (
+            mime_type.lower()
+            .replace("/", "-")
             .replace("+", "_")
+            .replace(".", "_")
         )
 
         path = (
             DOLPHIN_FOLDER
-            / f"uwuconverter-file-{safe_extension}.desktop"
+            / f"uwuconverter-file-{safe_mime}.desktop"
         )
 
         action_ids = [
