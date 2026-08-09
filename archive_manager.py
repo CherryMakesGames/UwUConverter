@@ -39,7 +39,6 @@ EXTRACT_FORMATS = {
 }
 
 
-
 def _candidate_7zip_paths():
     candidates = []
 
@@ -153,7 +152,8 @@ def create_archive(
 
     if archive_format not in CREATE_FORMATS:
         raise ValueError(
-            "Archive creation currently supports 7z, zip, tar, gzip, bzip2, xz, and wim."
+            "Archive creation currently supports 7z, zip, tar, "
+            "gzip, bzip2, xz, and wim."
         )
 
     if not 0 <= level <= 9:
