@@ -9,7 +9,7 @@ import platform_menu
 from audio_converter import convert_audio
 from batch_converter import batch_convert_folder
 from batch_dialog import open_batch_dialog
-from compression import (
+from media_compression import (
     compress_video_lossless,
     compress_video_by_percent,
     compress_image_lossless,
@@ -100,6 +100,7 @@ def ConvertFile(file_path, convert_type):
             action
         )
         return
+
 
     model_actions = {
         "modelobj": (".obj", "obj"),

@@ -82,7 +82,11 @@ def get_duration_seconds(container):
         return float(container.duration) / av.time_base
 
     video_stream = next(
-        (stream for stream in container.streams if stream.type == "video"),
+        (
+            stream
+            for stream in container.streams
+            if stream.type == "video"
+        ),
         None,
     )
 
@@ -96,7 +100,12 @@ def get_duration_seconds(container):
     raise ValueError("Could not determine the video's duration")
 
 
-def encode_video_to_bitrate(file_path, output_file_path, video_bitrate, audio_bitrate):
+def encode_video_to_bitrate(
+    file_path,
+    output_file_path,
+    video_bitrate,
+    audio_bitrate,
+):
     extension = pathlib.Path(file_path).suffix.lower()
     settings = VIDEO_SETTINGS.get(extension)
     if settings is None:
@@ -108,11 +117,19 @@ def encode_video_to_bitrate(file_path, output_file_path, video_bitrate, audio_bi
 
     try:
         input_video = next(
-            (stream for stream in input_container.streams if stream.type == "video"),
+            (
+                stream
+                for stream in input_container.streams
+                if stream.type == "video"
+            ),
             None,
         )
         input_audio = next(
-            (stream for stream in input_container.streams if stream.type == "audio"),
+            (
+                stream
+                for stream in input_container.streams
+                if stream.type == "audio"
+            ),
             None,
         )
 
@@ -120,7 +137,10 @@ def encode_video_to_bitrate(file_path, output_file_path, video_bitrate, audio_bi
             raise ValueError("The input file contains no video stream")
 
         frame_rate = input_video.average_rate or 30
-        output_video = output_container.add_stream(video_codec, rate=frame_rate)
+        output_video = output_container.add_stream(
+            video_codec,
+            rate=frame_rate,
+        )
         output_video.width = input_video.codec_context.width
         output_video.height = input_video.codec_context.height
         output_video.pix_fmt = pixel_format
@@ -137,7 +157,10 @@ def encode_video_to_bitrate(file_path, output_file_path, video_bitrate, audio_bi
         output_audio = None
         if input_audio is not None:
             sample_rate = input_audio.codec_context.sample_rate or 48000
-            output_audio = output_container.add_stream(audio_codec, rate=sample_rate)
+            output_audio = output_container.add_stream(
+                audio_codec,
+                rate=sample_rate,
+            )
             output_audio.bit_rate = audio_bitrate
 
         for packet in input_container.demux():
@@ -183,7 +206,9 @@ def compress_image_lossless(file_path):
         elif extension == ".png":
             image.save(output_file_path, optimize=True, compress_level=9)
         else:
-            raise ValueError("Compression only supports PNG, JPG, JPEG, and WEBP")
+            raise ValueError(
+                "Compression only supports PNG, JPG, JPEG, and WEBP"
+            )
     finally:
         image.close()
 
@@ -211,14 +236,21 @@ def compress_image_by_percent(file_path, percent):
         elif extension == ".png":
             save_png_near_target(image, output_file_path, target_size)
         else:
-            raise ValueError("Compression only supports PNG, JPG, JPEG, and WEBP")
+            raise ValueError(
+                "Compression only supports PNG, JPG, JPEG, and WEBP"
+            )
     finally:
         image.close()
 
     return output_file_path
 
 
-def save_lossy_image_near_target(image, extension, output_file_path, target_size):
+def save_lossy_image_near_target(
+    image,
+    extension,
+    output_file_path,
+    target_size,
+):
     if extension in (".jpg", ".jpeg") and image.mode != "RGB":
         image = image.convert("RGB")
 
@@ -231,7 +263,12 @@ def save_lossy_image_near_target(image, extension, output_file_path, target_size
         memory_file = io.BytesIO()
 
         if extension in (".jpg", ".jpeg"):
-            image.save(memory_file, format="JPEG", quality=quality, optimize=True)
+            image.save(
+                memory_file,
+                format="JPEG",
+                quality=quality,
+                optimize=True,
+            )
         else:
             image.save(memory_file, format="WEBP", quality=quality, method=6)
 

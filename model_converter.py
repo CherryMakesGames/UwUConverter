@@ -9,6 +9,7 @@ MODEL_OUTPUTS = {
     "glb",
 }
 
+
 def convert_model(
     file_path,
     output_file_path,

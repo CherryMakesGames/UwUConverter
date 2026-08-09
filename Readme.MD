@@ -1,5 +1,5 @@
 # UwUConverter
-
+[![Download UwUConverter](https://img.shields.io/sourceforge/dt/uwuconverter.svg)](https://sourceforge.net/projects/uwuconverter/files/latest/download)
 ![nya~](./Readme%20Images/banner.png)
 
 UwUConverter is a local file conversion utility written in Python. It supports right-click conversion, a graphical batch converter, and an installable command-line interface.
@@ -30,7 +30,7 @@ The project currently supports Windows and experimental Linux integration.
 
 ![Right Click Me Senpai~](Readme%20Images/Screenshot%202026-08-04%20155443.png)
 ![Fill Me Up With All The Batch Conversions mgh](Readme%20Images/Screenshot%202026-08-07%20133445.png)
-
+[![Download UwUConverter](https://a.fsdn.com/con/app/sf-download-button)](https://sourceforge.net/projects/uwuconverter/files/latest/download)
 ## Supported Formats
 
 ### Video

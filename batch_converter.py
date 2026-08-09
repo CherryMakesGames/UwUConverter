@@ -97,7 +97,6 @@ def parse_batch_action(action):
     return category, mode, output_format
 
 
-
 class NullLog:
     def write(self, value):
         return len(value)
@@ -115,7 +114,6 @@ class NullLog:
         traceback_object
     ):
         return False
-
 
 
 def batch_convert_folder(
@@ -518,7 +516,6 @@ def dispatch_conversion(
             output_format
         )
         return
-
 
     if category == "model":
         from model_converter import convert_model

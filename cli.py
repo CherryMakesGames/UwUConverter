@@ -187,6 +187,101 @@ def build_parser():
         help="Only print the final summary."
     )
 
+    # Archive
+    archive = commands.add_parser(
+        "archive",
+        help="Very basic 7-Zip archive commands."
+    )
+    archive_commands = archive.add_subparsers(
+        dest="archive_command",
+        required=True
+    )
+
+    archive_create = archive_commands.add_parser(
+        "create",
+        help="Create a 7z or ZIP archive."
+    )
+    archive_create.add_argument(
+        "output",
+        help="Output archive path."
+    )
+    archive_create.add_argument(
+        "inputs",
+        nargs="+",
+        help="Files and folders to add."
+    )
+    archive_create.add_argument(
+        "-t", "--type",
+        dest="archive_type",
+        choices=("7z", "zip"),
+        help="Archive type. Defaults to the output extension."
+    )
+    archive_create.add_argument(
+        "-l", "--level",
+        type=int,
+        default=5,
+        metavar="0-9",
+        help="Compression level from 0 to 9. Default: 5."
+    )
+    archive_create.add_argument(
+        "-p", "--password",
+        help="Archive password."
+    )
+    archive_create.add_argument(
+        "--encrypt-headers",
+        action="store_true",
+        help="Encrypt filenames too. 7z archives only."
+    )
+    archive_create.add_argument(
+        "-f", "--force",
+        action="store_true",
+        help="Replace an existing archive."
+    )
+
+    archive_extract = archive_commands.add_parser(
+        "extract",
+        help="Extract an archive."
+    )
+    archive_extract.add_argument(
+        "archive",
+        help="Archive to extract."
+    )
+    archive_extract.add_argument(
+        "-o", "--output",
+        help="Output folder. Defaults to a folder named after the archive."
+    )
+    archive_extract.add_argument(
+        "-p", "--password",
+        help="Archive password."
+    )
+    archive_extract.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Do not overwrite files that already exist."
+    )
+
+    archive_list = archive_commands.add_parser(
+        "list",
+        help="List archive contents."
+    )
+    archive_list.add_argument(
+        "archive",
+        help="Archive to inspect."
+    )
+
+    archive_test = archive_commands.add_parser(
+        "test",
+        help="Test archive integrity."
+    )
+    archive_test.add_argument(
+        "archive",
+        help="Archive to test."
+    )
+    archive_test.add_argument(
+        "-p", "--password",
+        help="Archive password."
+    )
+
     commands.add_parser(
         "formats",
         help="List supported input and output formats."
@@ -448,7 +543,7 @@ def compress_command(args):
             "--percent must be between 1 and 99."
         )
 
-    from compression import (
+    from media_compression import (
         compress_image_by_percent,
         compress_image_lossless,
         compress_video_by_percent,
@@ -639,6 +734,61 @@ def batch_command(args):
     return 2 if stats["failed"] else 0
 
 
+def archive_command(args):
+    from archive_manager import (
+        create_archive,
+        extract_archive,
+        list_archive,
+        test_archive,
+    )
+
+    if args.archive_command == "create":
+        output = create_archive(
+            clean_cli_path(args.output),
+            [
+                clean_cli_path(item)
+                for item in args.inputs
+            ],
+            archive_format=args.archive_type,
+            level=args.level,
+            password=args.password,
+            encrypt_headers=args.encrypt_headers,
+            force=args.force,
+        )
+        print(output)
+        return 0
+
+    if args.archive_command == "extract":
+        output = extract_archive(
+            clean_cli_path(args.archive),
+            (
+                clean_cli_path(args.output)
+                if args.output
+                else None
+            ),
+            password=args.password,
+            overwrite=not args.skip_existing,
+        )
+        print(output)
+        return 0
+
+    if args.archive_command == "list":
+        return list_archive(
+            clean_cli_path(args.archive)
+        )
+
+    if args.archive_command == "test":
+        return test_archive(
+            clean_cli_path(args.archive),
+            password=args.password,
+        )
+
+    raise ValueError(
+        "Unknown archive command: "
+        + str(args.archive_command)
+    )
+
+
 def formats_command():
     sections = [
         (
@@ -707,6 +857,9 @@ def main(argv=None):
 
         if args.command == "batch":
             return batch_command(args)
+
+        if args.command == "archive":
+            return archive_command(args)
 
         if args.command == "formats":
             return formats_command()

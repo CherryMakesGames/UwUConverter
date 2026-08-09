@@ -21,7 +21,6 @@ DOLPHIN_FOLDER = (
     / ".local/share/kio/servicemenus"
 )
 
-# Every filename pattern used by previous Linux implementations.
 DOLPHIN_OLD_PATTERNS = [
     "uwuconverter-*.desktop",
     "UwUConverter-*.desktop",
@@ -32,11 +31,61 @@ OLD_SCRIPT_NAMES = {
 }
 
 
+# KDE/Dolphin service menus match MIME types, not filename extensions.
+# Keep this intentionally simple and explicit for the formats supported
+# by UwUConverter.
+MIME_TYPES = {
+    ".mp4": "video/mp4",
+    ".mkv": "video/x-matroska",
+    ".mov": "video/quicktime",
+    ".avi": "video/x-msvideo",
+    ".webm": "video/webm",
+
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/x-wav",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
+    ".opus": "audio/ogg",
+
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".ico": "image/x-icon",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".raw": "image/x-dcraw",
+
+    ".pdf": "application/pdf",
+    ".docx": (
+        "application/vnd.openxmlformats-officedocument."
+        "wordprocessingml.document"
+    ),
+    ".odt": "application/vnd.oasis.opendocument.text",
+    ".txt": "text/plain",
+
+    ".xlsx": (
+        "application/vnd.openxmlformats-officedocument."
+        "spreadsheetml.sheet"
+    ),
+    ".xls": "application/vnd.ms-excel",
+    ".xlsb": "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
+    ".xlsm": "application/vnd.ms-excel.sheet.macroEnabled.12",
+    ".ods": "application/vnd.oasis.opendocument.spreadsheet",
+    ".csv": "text/csv",
+    ".tsv": "text/tab-separated-values",
+
+    ".obj": "model/obj",
+    ".stl": "model/stl",
+    ".ply": "application/x-ply",
+    ".glb": "model/gltf-binary",
+}
+
+
 def CreateExtensions(file_types):
-    # Always clean up every old UwUConverter integration before
-    # creating the current GUI launcher.
     cleanup_linux_integrations()
 
+    # Nautilus/Nemo/Caja currently get the folder batch launcher.
     for manager, root in SCRIPT_FOLDERS.items():
         app_folder = root / APP_FOLDER_NAME
         app_folder.mkdir(
@@ -61,9 +110,10 @@ def CreateExtensions(file_types):
         )
 
     create_dolphin_batch_gui_menu()
+    create_dolphin_file_menus(file_types)
 
     print(
-        "Installed Dolphin batch GUI menu: "
+        "Installed Dolphin UwUConverter menus: "
         + str(DOLPHIN_FOLDER)
     )
 
@@ -87,8 +137,6 @@ def RemoveExtensions(file_types=None):
 def cleanup_linux_integrations():
     removed = []
 
-    # Delete the complete generated script folders. This removes old
-    # nested conversion menus as well as the current GUI launcher.
     for root in SCRIPT_FOLDERS.values():
         app_folder = root / APP_FOLDER_NAME
 
@@ -96,8 +144,6 @@ def cleanup_linux_integrations():
             shutil.rmtree(app_folder)
             removed.append(str(app_folder))
 
-        # Some old builds may have placed the launcher directly in the
-        # file manager's scripts directory.
         for old_name in OLD_SCRIPT_NAMES:
             old_path = root / old_name
 
@@ -109,8 +155,6 @@ def cleanup_linux_integrations():
 
                 removed.append(str(old_path))
 
-    # Remove every Dolphin service menu made by any UwUConverter build,
-    # including the old per-category and per-output-mode menus.
     if DOLPHIN_FOLDER.exists():
         found = set()
 
@@ -167,6 +211,143 @@ def create_dolphin_batch_gui_menu():
     )
 
     make_executable(path)
+
+
+def create_dolphin_file_menus(file_types):
+    DOLPHIN_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    for extension, conversions in file_types.items():
+        mime_type = MIME_TYPES.get(
+            extension.lower()
+        )
+
+        if not mime_type or not conversions:
+            continue
+
+        actions = flatten_conversions(
+            conversions
+        )
+
+        if not actions:
+            continue
+
+        safe_extension = (
+            extension.lower()
+            .lstrip(".")
+            .replace("+", "_")
+        )
+
+        path = (
+            DOLPHIN_FOLDER
+            / f"uwuconverter-file-{safe_extension}.desktop"
+        )
+
+        action_ids = [
+            f"uwu{index:02d}"
+            for index in range(
+                1,
+                len(actions) + 1
+            )
+        ]
+
+        lines = [
+            "[Desktop Entry]",
+            "Type=Service",
+            "MimeType=" + mime_type + ";",
+            "Actions=" + ";".join(action_ids) + ";",
+            "X-KDE-Submenu=Convert With UwUConverter ^-^",
+            "X-KDE-Priority=TopLevel",
+            "",
+        ]
+
+        for action_id, (
+            label,
+            convert_type
+        ) in zip(action_ids, actions):
+            command = " ".join(
+                shlex.quote(part)
+                for part in single_file_command(
+                    convert_type
+                )
+            )
+
+            lines.extend(
+                [
+                    f"[Desktop Action {action_id}]",
+                    "Name=" + label,
+                    "Icon=document-convert",
+                    "Exec=" + command + " %f",
+                    "",
+                ]
+            )
+
+        path.write_text(
+            "\n".join(lines),
+            encoding="utf-8"
+        )
+
+        make_executable(path)
+
+
+def flatten_conversions(items, prefix=""):
+    result = []
+
+    for _, label, action in items:
+        if isinstance(action, list):
+            nested_prefix = (
+                label
+                if not prefix
+                else prefix + " - " + label
+            )
+
+            result.extend(
+                flatten_conversions(
+                    action,
+                    nested_prefix
+                )
+            )
+            continue
+
+        display_label = (
+            label
+            if not prefix
+            else prefix + " - " + label
+        )
+
+        result.append(
+            (
+                display_label,
+                action
+            )
+        )
+
+    return result
+
+
+def single_file_command(convert_type):
+    if getattr(sys, "frozen", False):
+        return [
+            sys.executable,
+            "%f",
+            convert_type,
+        ]
+
+    converter = (
+        pathlib.Path(__file__)
+        .resolve()
+        .parent
+        / "Converter.py"
+    )
+
+    return [
+        sys.executable,
+        str(converter),
+        "%f",
+        convert_type,
+    ]
 
 
 def build_folder_gui_script():

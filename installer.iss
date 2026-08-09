@@ -1,6 +1,9 @@
 #define MyAppName "UwUConverter"
 #define MyAppVersion "1.5"
 #define MyAppPublisher "Pink Sakura Studios"
+#define SevenZipVersion "26.02"
+#define SevenZipInstaller "7z2602-x64.exe"
+#define SevenZipUrl "https://github.com/ip7z/7zip/releases/download/26.02/7z2602-x64.exe"
 
 [Setup]
 AppId={{8D811A80-60D1-49B5-A9D5-1E9E3A54D84A}
@@ -105,10 +108,94 @@ begin
   );
 end;
 
+function SevenZipInstalled(): Boolean;
+begin
+  Result :=
+    FileExists(
+      ExpandConstant('{autopf}\7-Zip\7z.exe')
+    ) or
+    FileExists(
+      ExpandConstant('{autopf32}\7-Zip\7z.exe')
+    );
+end;
+
+procedure EnsureSevenZipInstalled();
+var
+  InstallerPath: String;
+  ResultCode: Integer;
+begin
+  if SevenZipInstalled() then
+  begin
+    Log('7-Zip already installed; skipping download.');
+    exit;
+  end;
+
+  try
+    Log('7-Zip not found. Downloading 7-Zip ' + '{#SevenZipVersion}' + '...');
+
+    DownloadTemporaryFile(
+      '{#SevenZipUrl}',
+      '{#SevenZipInstaller}',
+      '',
+      nil
+    );
+
+    InstallerPath :=
+      ExpandConstant('{tmp}\{#SevenZipInstaller}');
+
+    if not FileExists(InstallerPath) then
+      raise Exception.Create(
+        'Downloaded 7-Zip installer was not found.'
+      );
+
+    Log('Launching 7-Zip installer.');
+
+    if not ShellExec(
+      'runas',
+      InstallerPath,
+      '/S',
+      '',
+      SW_SHOWNORMAL,
+      ewWaitUntilTerminated,
+      ResultCode
+    ) then
+    begin
+      Log('Could not launch 7-Zip installer.');
+      exit;
+    end;
+
+    if ResultCode <> 0 then
+      Log(
+        '7-Zip installer returned exit code '
+        + IntToStr(ResultCode)
+      )
+    else
+      Log('7-Zip installation completed.');
+
+  except
+    Log(
+      '7-Zip automatic installation failed: '
+      + GetExceptionMessage
+    );
+
+    MsgBox(
+      'UwUConverter was installed, but 7-Zip could not be installed automatically.'
+      + #13#10
+      + 'Archive commands will not work until 7-Zip is installed.',
+      mbInformation,
+      MB_OK
+    );
+  end;
+end;
+
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
+  begin
     AddCliToPath();
+    EnsureSevenZipInstalled();
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
