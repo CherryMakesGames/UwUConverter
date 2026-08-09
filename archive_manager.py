@@ -6,6 +6,7 @@ import sys
 
 
 CREATE_FORMATS = {"7z", "zip"}
+EXTRACT_FORMATS = {"7z", "zip", "rar"}
 
 
 def _candidate_7zip_paths():
@@ -172,6 +173,12 @@ def extract_archive(
 ):
     archive = pathlib.Path(archive_path).expanduser().resolve()
 
+    extension = archive.suffix.lower().lstrip(".")
+    if extension and extension not in EXTRACT_FORMATS:
+        raise ValueError(
+            "Archive extraction currently supports 7z, zip, and rar."
+        )
+
     if not archive.is_file():
         raise FileNotFoundError(
             f"Archive does not exist: {archive}"
@@ -204,6 +211,12 @@ def extract_archive(
 def list_archive(archive_path):
     archive = pathlib.Path(archive_path).expanduser().resolve()
 
+    extension = archive.suffix.lower().lstrip(".")
+    if extension and extension not in EXTRACT_FORMATS:
+        raise ValueError(
+            "Archive listing currently supports 7z, zip, and rar."
+        )
+
     if not archive.is_file():
         raise FileNotFoundError(
             f"Archive does not exist: {archive}"
@@ -216,6 +229,12 @@ def list_archive(archive_path):
 
 def test_archive(archive_path, password=None):
     archive = pathlib.Path(archive_path).expanduser().resolve()
+
+    extension = archive.suffix.lower().lstrip(".")
+    if extension and extension not in EXTRACT_FORMATS:
+        raise ValueError(
+            "Archive testing currently supports 7z, zip, and rar."
+        )
 
     if not archive.is_file():
         raise FileNotFoundError(
