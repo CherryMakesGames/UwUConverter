@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "1.5"
+#define MyAppVersion "0.11"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -144,9 +144,17 @@ begin
       ExpandConstant('{tmp}\{#SevenZipInstaller}');
 
     if not FileExists(InstallerPath) then
-      raise Exception.Create(
-        'Downloaded 7-Zip installer was not found.'
+    begin
+      Log('Downloaded 7-Zip installer was not found.');
+      MsgBox(
+        'UwUConverter was installed, but the downloaded 7-Zip installer could not be found.'
+        + #13#10
+        + 'Archive commands will not work until 7-Zip is installed.',
+        mbInformation,
+        MB_OK
       );
+      exit;
+    end;
 
     Log('Launching 7-Zip installer.');
 
