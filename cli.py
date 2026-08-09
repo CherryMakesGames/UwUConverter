@@ -4,7 +4,7 @@ import pathlib
 import sys
 import traceback
 
-VERSION = "1.6-cli"
+VERSION = "1.7"
 
 VIDEO_INPUTS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 VIDEO_OUTPUTS = {"mp4", "mkv", "mov", "avi", "webm"}
@@ -213,8 +213,13 @@ def build_parser():
     archive_create.add_argument(
         "-t", "--type",
         dest="archive_type",
-        choices=("7z", "zip", "tar", "gzip", "gz", "bzip2", "bz2", "xz", "wim"),
-        help="Archive type. Defaults to the output extension. Supports 7z, zip, tar, gzip, bzip2, xz, and wim."
+        choices=(
+            "7z", "zip", "tar", "gzip", "gz", "bzip2", "bz2", "xz", "wim"
+        ),
+        help=(
+            "Archive type. Defaults to the output extension. "
+            "Supports 7z, zip, tar, gzip, bzip2, xz, and wim."
+        )
     )
     archive_create.add_argument(
         "-l", "--level",
@@ -253,6 +258,17 @@ def build_parser():
     archive_extract.add_argument(
         "-p", "--password",
         help="Archive password."
+    )
+    archive_extract.add_argument(
+        "--here",
+        action="store_true",
+        help="Extract directly beside the archive instead of into a "
+             "named folder."
+    )
+    archive_extract.add_argument(
+        "--delete-source",
+        action="store_true",
+        help="Delete the archive only after extraction succeeds."
     )
     archive_extract.add_argument(
         "--skip-existing",
@@ -484,7 +500,6 @@ def convert_command(args):
             str(output),
             document_format
         )
-
 
     elif extension in MODEL_INPUTS:
         from model_converter import convert_model
@@ -737,7 +752,7 @@ def batch_command(args):
 def archive_command(args):
     from archive_manager import (
         create_archive,
-        extract_archive,
+        extract_archive_with_options,
         list_archive,
         test_archive,
     )
@@ -759,15 +774,31 @@ def archive_command(args):
         return 0
 
     if args.archive_command == "extract":
-        output = extract_archive(
-            clean_cli_path(args.archive),
-            (
+        archive_path = pathlib.Path(
+            clean_cli_path(args.archive)
+        ).expanduser().resolve()
+
+        if args.here and args.output:
+            raise ValueError(
+                "--here and --output cannot be used together."
+            )
+
+        output_dir = (
+            archive_path.parent
+            if args.here
+            else (
                 clean_cli_path(args.output)
                 if args.output
                 else None
-            ),
+            )
+        )
+
+        output = extract_archive_with_options(
+            archive_path,
+            output_dir=output_dir,
             password=args.password,
             overwrite=not args.skip_existing,
+            delete_source=args.delete_source,
         )
         print(output)
         return 0

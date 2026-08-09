@@ -278,3 +278,27 @@ def test_archive(archive_path, password=None):
         arguments.append("-p" + password)
 
     return run_7zip(arguments)
+
+
+def extract_archive_with_options(
+    archive_path,
+    output_dir=None,
+    password=None,
+    overwrite=True,
+    delete_source=False,
+):
+    archive = pathlib.Path(
+        archive_path
+    ).expanduser().resolve()
+
+    output = extract_archive(
+        archive,
+        output_dir=output_dir,
+        password=password,
+        overwrite=overwrite,
+    )
+
+    if delete_source:
+        archive.unlink()
+
+    return output

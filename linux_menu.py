@@ -82,6 +82,25 @@ MIME_TYPES = {
 }
 
 
+
+ARCHIVE_MIME_TYPES = [
+    "application/x-7z-compressed",
+    "application/zip",
+    "application/vnd.rar",
+    "application/x-rar",
+    "application/x-tar",
+    "application/gzip",
+    "application/x-gzip",
+    "application/x-bzip2",
+    "application/x-xz",
+    "application/x-lzma",
+    "application/vnd.ms-cab-compressed",
+    "application/x-iso9660-image",
+    "application/x-arj",
+    "application/x-lzh-compressed",
+    "application/x-xar",
+]
+
 def CreateExtensions(file_types):
     cleanup_linux_integrations()
 
@@ -111,6 +130,7 @@ def CreateExtensions(file_types):
 
     create_dolphin_batch_gui_menu()
     create_dolphin_file_menus(file_types)
+    create_dolphin_archive_menu()
 
     print(
         "Installed Dolphin UwUConverter menus: "
@@ -313,6 +333,151 @@ def create_dolphin_file_menus(file_types):
         )
 
         make_executable(path)
+
+
+
+def create_dolphin_archive_menu():
+    DOLPHIN_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    path = (
+        DOLPHIN_FOLDER
+        / "uwuconverter-archive-extract.desktop"
+    )
+
+    mime_line = ";".join(
+        ARCHIVE_MIME_TYPES
+    ) + ";"
+
+    actions = [
+        (
+            "uwuExtractHere",
+            "Extract Here",
+            ["archive", "extract", "--here"],
+        ),
+        (
+            "uwuExtractFolder",
+            "Extract to Archive-Named Folder",
+            ["archive", "extract"],
+        ),
+        (
+            "uwuExtractHereDelete",
+            "Extract Here and Delete Archive",
+            [
+                "archive", "extract",
+                "--here",
+                "--delete-source",
+            ],
+        ),
+        (
+            "uwuExtractFolderDelete",
+            "Extract to Archive-Named Folder and Delete Archive",
+            [
+                "archive", "extract",
+                "--delete-source",
+            ],
+        ),
+    ]
+
+    lines = [
+        "[Desktop Entry]",
+        "Type=Service",
+        "MimeType=" + mime_line,
+        "Actions="
+        + ";".join(
+            action_id
+            for action_id, _, _ in actions
+        )
+        + ";",
+        "X-KDE-Submenu=Extract With UwUConverter ^-^",
+        "X-KDE-Priority=TopLevel",
+        "",
+    ]
+
+    for action_id, label, arguments in actions:
+        command = " ".join(
+            shlex.quote(part)
+            for part in archive_cli_command(
+                arguments
+            )
+        )
+
+        lines.extend(
+            [
+                f"[Desktop Action {action_id}]",
+                "Name=" + label,
+                "Icon=archive-extract",
+                "Exec=" + command + " %f",
+                "",
+            ]
+        )
+
+    path.write_text(
+        "\n".join(lines),
+        encoding="utf-8"
+    )
+
+    make_executable(path)
+
+
+def archive_cli_command(arguments):
+    if getattr(sys, "frozen", False):
+        # Installed Linux builds expose the console CLI here.
+        installed_cli = (
+            pathlib.Path.home()
+            / ".local/bin/UwUConverter"
+        )
+
+        if installed_cli.is_file():
+            return [
+                str(installed_cli),
+                *arguments,
+            ]
+
+        executable_folder = pathlib.Path(
+            sys.executable
+        ).resolve().parent
+
+        for name in (
+            "UwUConverterCLI",
+            "UwUConverter",
+        ):
+            candidate = (
+                executable_folder
+                / name
+            )
+
+            if (
+                candidate.is_file()
+                and candidate.resolve()
+                != pathlib.Path(
+                    sys.executable
+                ).resolve()
+            ):
+                return [
+                    str(candidate),
+                    *arguments,
+                ]
+
+        raise FileNotFoundError(
+            "UwUConverter CLI was not found. "
+            "Install the CLI before creating archive menus."
+        )
+
+    cli_script = (
+        pathlib.Path(__file__)
+        .resolve()
+        .parent
+        / "cli.py"
+    )
+
+    return [
+        sys.executable,
+        str(cli_script),
+        *arguments,
+    ]
 
 
 def flatten_conversions(items, prefix=""):
