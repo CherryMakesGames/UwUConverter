@@ -213,8 +213,8 @@ def build_parser():
     archive_create.add_argument(
         "-t", "--type",
         dest="archive_type",
-        choices=("7z", "zip"),
-        help="Archive type. Defaults to the output extension."
+        choices=("7z", "zip", "tar", "gzip", "gz", "bzip2", "bz2", "xz", "wim"),
+        help="Archive type. Defaults to the output extension. Supports 7z, zip, tar, gzip, bzip2, xz, and wim."
     )
     archive_create.add_argument(
         "-l", "--level",
@@ -543,7 +543,7 @@ def compress_command(args):
             "--percent must be between 1 and 99."
         )
 
-    from media_compression import (
+    from compression import (
         compress_image_by_percent,
         compress_image_lossless,
         compress_video_by_percent,

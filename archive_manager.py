@@ -5,8 +5,39 @@ import subprocess
 import sys
 
 
-CREATE_FORMATS = {"7z", "zip"}
-EXTRACT_FORMATS = {"7z", "zip", "rar"}
+CREATE_FORMATS = {
+    "7z",
+    "zip",
+    "tar",
+    "gzip",
+    "gz",
+    "bzip2",
+    "bz2",
+    "xz",
+    "wim",
+}
+
+EXTRACT_FORMATS = {
+    "7z",
+    "zip",
+    "rar",
+    "tar",
+    "gzip",
+    "gz",
+    "bzip2",
+    "bz2",
+    "xz",
+    "wim",
+    "cab",
+    "iso",
+    "arj",
+    "lzh",
+    "lzma",
+    "rpm",
+    "dmg",
+    "xar",
+}
+
 
 
 def _candidate_7zip_paths():
@@ -122,7 +153,7 @@ def create_archive(
 
     if archive_format not in CREATE_FORMATS:
         raise ValueError(
-            "Archive creation currently supports only 7z and zip."
+            "Archive creation currently supports 7z, zip, tar, gzip, bzip2, xz, and wim."
         )
 
     if not 0 <= level <= 9:
@@ -176,7 +207,7 @@ def extract_archive(
     extension = archive.suffix.lower().lstrip(".")
     if extension and extension not in EXTRACT_FORMATS:
         raise ValueError(
-            "Archive extraction currently supports 7z, zip, and rar."
+            "Unsupported archive format for extraction."
         )
 
     if not archive.is_file():
@@ -214,7 +245,7 @@ def list_archive(archive_path):
     extension = archive.suffix.lower().lstrip(".")
     if extension and extension not in EXTRACT_FORMATS:
         raise ValueError(
-            "Archive listing currently supports 7z, zip, and rar."
+            "Unsupported archive format for listing."
         )
 
     if not archive.is_file():
@@ -233,7 +264,7 @@ def test_archive(archive_path, password=None):
     extension = archive.suffix.lower().lstrip(".")
     if extension and extension not in EXTRACT_FORMATS:
         raise ValueError(
-            "Archive testing currently supports 7z, zip, and rar."
+            "Unsupported archive format for testing."
         )
 
     if not archive.is_file():
