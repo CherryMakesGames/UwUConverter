@@ -82,7 +82,6 @@ MIME_TYPES = {
 }
 
 
-
 ARCHIVE_MIME_TYPES = [
     "application/x-7z-compressed",
     "application/zip",
@@ -100,6 +99,7 @@ ARCHIVE_MIME_TYPES = [
     "application/x-lzh-compressed",
     "application/x-xar",
 ]
+
 
 def CreateExtensions(file_types):
     cleanup_linux_integrations()
@@ -333,7 +333,6 @@ def create_dolphin_file_menus(file_types):
         )
 
         make_executable(path)
-
 
 
 def create_dolphin_archive_menu():
