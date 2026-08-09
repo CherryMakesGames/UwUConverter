@@ -27,6 +27,7 @@ The project currently supports Windows and experimental Linux integration.
 - Nautilus integration
 - Nemo integration
 - Caja integration
+- 7-zip cli bundled integration
 
 ![Right Click Me Senpai~](Readme%20Images/Screenshot%202026-08-04%20155443.png)
 ![Fill Me Up With All The Batch Conversions mgh](Readme%20Images/Screenshot%202026-08-07%20133445.png)
