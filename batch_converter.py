@@ -4,7 +4,7 @@ import time
 import traceback
 import uuid
 
-CATEGORY_EXTENSIONS = {
+CATEGORY_EXTENSIONS = { 
     "image": {
         ".png", ".jpg", ".jpeg", ".webp", ".ico",
         ".tif", ".tiff", ".raw"

@@ -123,6 +123,27 @@ def ConvertFile(file_path, convert_type):
         )
         return
 
+
+    archive_actions = {
+        "archive_extract_here": (False, False),
+        "archive_extract_folder": (True, False),
+        "archive_extract_here_delete": (False, True),
+        "archive_extract_folder_delete": (True, True),
+    }
+
+    if action in archive_actions:
+        from archive_manager import extract_archive_with_options
+
+        source = pathlib.Path(file_path).expanduser().resolve()
+        into_folder, delete_source = archive_actions[action]
+
+        extract_archive_with_options(
+            source,
+            output_dir=None if into_folder else source.parent,
+            delete_source=delete_source,
+        )
+        return
+
     video_compression = {
         "video_compress_lossless": None,
         "video_compress_25": 25,
