@@ -3,6 +3,8 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.request
 
 
 CREATE_FORMATS = {
@@ -16,6 +18,11 @@ CREATE_FORMATS = {
     "xz",
     "wim",
 }
+
+SEVEN_ZIP_WINDOWS_X64_URL = (
+    "https://github.com/ip7z/7zip/releases/download/"
+    "26.02/7z2602-x64.exe"
+)
 
 EXTRACT_FORMATS = {
     "7z",
@@ -37,6 +44,7 @@ EXTRACT_FORMATS = {
     "dmg",
     "xar",
 }
+
 
 
 def _candidate_7zip_paths():
@@ -74,6 +82,26 @@ def _candidate_7zip_paths():
 
 
 def find_7zip():
+    found = _find_existing_7zip()
+
+    if found is not None:
+        return found
+
+    if os.name == "nt":
+        _install_7zip_windows()
+
+        found = _find_existing_7zip()
+
+        if found is not None:
+            return found
+
+    raise FileNotFoundError(
+        "7-Zip was not found and automatic installation failed. "
+        "Install 7-Zip manually and try again."
+    )
+
+
+def _find_existing_7zip():
     seen = set()
 
     for candidate in _candidate_7zip_paths():
@@ -92,10 +120,81 @@ def find_7zip():
         if resolved.is_file():
             return resolved
 
-    raise FileNotFoundError(
-        "7-Zip was not found. Re-run the UwUConverter installer "
-        "or install 7-Zip manually."
+    return None
+
+
+def _install_7zip_windows():
+    installer_path = (
+        pathlib.Path(tempfile.gettempdir())
+        / "UwUConverter-7zip-installer.exe"
     )
+
+    try:
+        urllib.request.urlretrieve(
+            SEVEN_ZIP_WINDOWS_X64_URL,
+            installer_path,
+        )
+    except Exception as error:
+        raise RuntimeError(
+            "Could not download 7-Zip automatically: "
+            + str(error)
+        ) from error
+
+    if not installer_path.is_file():
+        raise RuntimeError(
+            "7-Zip installer download did not create a file."
+        )
+
+    try:
+        result = subprocess.run(
+            [
+                str(installer_path),
+                "/S",
+            ],
+            check=False,
+        )
+
+        if result.returncode == 0:
+            return
+
+    except OSError:
+        pass
+
+    powershell = shutil.which("powershell") or shutil.which("pwsh")
+
+    if not powershell:
+        raise RuntimeError(
+            "7-Zip needs administrator permission, but PowerShell "
+            "was not found to request elevation."
+        )
+
+    escaped_path = str(installer_path).replace(
+        "'",
+        "''",
+    )
+
+    command = (
+        "Start-Process "
+        f"-FilePath '{escaped_path}' "
+        "-ArgumentList '/S' "
+        "-Verb RunAs "
+        "-Wait"
+    )
+
+    result = subprocess.run(
+        [
+            powershell,
+            "-NoProfile",
+            "-Command",
+            command,
+        ],
+        check=False,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "7-Zip automatic installation failed."
+        )
 
 
 def run_7zip(arguments):
@@ -152,8 +251,7 @@ def create_archive(
 
     if archive_format not in CREATE_FORMATS:
         raise ValueError(
-            "Archive creation currently supports 7z, zip, tar, "
-            "gzip, bzip2, xz, and wim."
+            "Archive creation currently supports 7z, zip, tar, gzip, bzip2, xz, and wim."
         )
 
     if not 0 <= level <= 9:
@@ -278,6 +376,7 @@ def test_archive(archive_path, password=None):
         arguments.append("-p" + password)
 
     return run_7zip(arguments)
+
 
 
 def extract_archive_with_options(
