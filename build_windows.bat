@@ -28,6 +28,11 @@ python -m PyInstaller --clean --noconfirm --distpath dist-cli UwUConverterCLI.sp
 if errorlevel 1 exit /b %errorlevel%
 
 echo.
+echo Building windowless auto-updater...
+python -m PyInstaller --clean --noconfirm UwUConverterUpdater.spec
+if errorlevel 1 exit /b %errorlevel%
+
+echo.
 echo Creating final layout...
 if not exist "dist\UwUConverter\cli" mkdir "dist\UwUConverter\cli"
 
@@ -41,11 +46,17 @@ copy /y ^
   "dist\UwUConverter\cli\UwUConverter.exe"
 if errorlevel 1 exit /b %errorlevel%
 
+copy /y ^
+  "dist\UwUConverterUpdater.exe" ^
+  "dist\UwUConverter\UwUConverterUpdater.exe"
+if errorlevel 1 exit /b %errorlevel%
+
 echo.
 echo Build complete:
 echo   GUI: dist\UwUConverter\UwUConverter.exe
 echo   Batch GUI: dist\UwUConverter\UwUConverterBatch.exe
 echo   CLI: dist\UwUConverter\cli\UwUConverter.exe
+echo   Updater: dist\UwUConverter\UwUConverterUpdater.exe
 echo.
 echo The installer adds ONLY the cli folder to PATH.
 pause

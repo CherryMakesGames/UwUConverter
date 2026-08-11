@@ -82,6 +82,7 @@ MIME_TYPES = {
 }
 
 
+
 ARCHIVE_MIME_TYPES = [
     "application/x-7z-compressed",
     "application/zip",
@@ -99,7 +100,6 @@ ARCHIVE_MIME_TYPES = [
     "application/x-lzh-compressed",
     "application/x-xar",
 ]
-
 
 def CreateExtensions(file_types):
     cleanup_linux_integrations()
@@ -335,6 +335,7 @@ def create_dolphin_file_menus(file_types):
         make_executable(path)
 
 
+
 def create_dolphin_archive_menu():
     DOLPHIN_FOLDER.mkdir(
         parents=True,
@@ -423,7 +424,6 @@ def create_dolphin_archive_menu():
 
 def archive_cli_command(arguments):
     if getattr(sys, "frozen", False):
-        # Installed Linux builds expose the console CLI here.
         installed_cli = (
             pathlib.Path.home()
             / ".local/bin/UwUConverter"
@@ -443,10 +443,7 @@ def archive_cli_command(arguments):
             "UwUConverterCLI",
             "UwUConverter",
         ):
-            candidate = (
-                executable_folder
-                / name
-            )
+            candidate = executable_folder / name
 
             if (
                 candidate.is_file()
