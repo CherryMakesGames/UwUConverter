@@ -1,5 +1,7 @@
 import os
 import pathlib
+import platform
+import tarfile
 import shutil
 import subprocess
 import sys
@@ -12,17 +14,37 @@ CREATE_FORMATS = {
     "zip",
     "tar",
     "gzip",
-    "gz",
     "bzip2",
-    "bz2",
     "xz",
     "wim",
+}
+
+CREATE_FORMAT_ALIASES = {
+    "gz": "gzip",
+    "bz2": "bzip2",
+}
+
+SINGLE_FILE_CREATE_FORMATS = {
+    "gzip",
+    "bzip2",
+    "xz",
 }
 
 SEVEN_ZIP_WINDOWS_X64_URL = (
     "https://github.com/ip7z/7zip/releases/download/"
     "26.02/7z2602-x64.exe"
 )
+
+SEVEN_ZIP_LINUX_URLS = {
+    "x86_64": (
+        "https://github.com/ip7z/7zip/releases/download/"
+        "26.02/7z2602-linux-x64.tar.xz"
+    ),
+    "arm64": (
+        "https://github.com/ip7z/7zip/releases/download/"
+        "26.02/7z2602-linux-arm64.tar.xz"
+    ),
+}
 
 EXTRACT_FORMATS = {
     "7z",
@@ -60,6 +82,12 @@ def _candidate_7zip_paths():
         if found:
             candidates.append(pathlib.Path(found))
 
+    if sys.platform.startswith("linux"):
+        candidates.append(
+            pathlib.Path.home()
+            / ".local/share/UwUConverter/tools/7zip/7zz"
+        )
+
     if os.name == "nt":
         for env_name in ("ProgramFiles", "ProgramFiles(x86)"):
             root = os.environ.get(env_name)
@@ -89,6 +117,14 @@ def find_7zip():
 
     if os.name == "nt":
         _install_7zip_windows()
+
+        found = _find_existing_7zip()
+
+        if found is not None:
+            return found
+
+    if sys.platform.startswith("linux"):
+        _install_7zip_linux()
 
         found = _find_existing_7zip()
 
@@ -197,6 +233,115 @@ def _install_7zip_windows():
         )
 
 
+def _linux_7zip_architecture():
+    machine = platform.machine().lower()
+
+    if machine in {
+        "x86_64",
+        "amd64",
+    }:
+        return "x86_64"
+
+    if machine in {
+        "aarch64",
+        "arm64",
+    }:
+        return "arm64"
+
+    raise RuntimeError(
+        "Automatic 7-Zip installation is not available for "
+        + machine
+        + "."
+    )
+
+
+def _install_7zip_linux():
+    architecture = _linux_7zip_architecture()
+    url = SEVEN_ZIP_LINUX_URLS[
+        architecture
+    ]
+
+    destination = (
+        pathlib.Path.home()
+        / ".local/share/UwUConverter/tools/7zip"
+    )
+
+    destination.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    binary = destination / "7zz"
+
+    with tempfile.TemporaryDirectory(
+        prefix="UwUConverter-7zip-"
+    ) as temp_directory:
+        temp_root = pathlib.Path(
+            temp_directory
+        )
+        archive_path = (
+            temp_root
+            / "7zip.tar.xz"
+        )
+
+        try:
+            urllib.request.urlretrieve(
+                url,
+                archive_path,
+            )
+        except Exception as error:
+            raise RuntimeError(
+                "Could not download 7-Zip for Linux automatically: "
+                + str(error)
+            ) from error
+
+        with tarfile.open(
+            archive_path,
+            "r:xz",
+        ) as archive:
+            members = [
+                member
+                for member in archive.getmembers()
+                if pathlib.PurePosixPath(
+                    member.name
+                ).name
+                == "7zz"
+                and member.isfile()
+            ]
+
+            if not members:
+                raise RuntimeError(
+                    "The downloaded 7-Zip package does not contain 7zz."
+                )
+
+            extracted = archive.extractfile(
+                members[0]
+            )
+
+            if extracted is None:
+                raise RuntimeError(
+                    "Could not read 7zz from the downloaded package."
+                )
+
+            with binary.open(
+                "wb"
+            ) as output:
+                shutil.copyfileobj(
+                    extracted,
+                    output,
+                )
+
+    binary.chmod(
+        binary.stat().st_mode
+        | 0o111
+    )
+
+    if not binary.is_file():
+        raise RuntimeError(
+            "7-Zip Linux installation did not create 7zz."
+        )
+
+
 def run_7zip(arguments):
     executable = find_7zip()
 
@@ -248,10 +393,27 @@ def create_archive(
         archive_format = archive.suffix.lower().lstrip(".") or "7z"
 
     archive_format = archive_format.lower()
+    archive_format = CREATE_FORMAT_ALIASES.get(
+        archive_format,
+        archive_format,
+    )
 
     if archive_format not in CREATE_FORMATS:
         raise ValueError(
             "Archive creation currently supports 7z, zip, tar, gzip, bzip2, xz, and wim."
+        )
+
+    if (
+        archive_format in SINGLE_FILE_CREATE_FORMATS
+        and (
+            len(inputs) != 1
+            or not inputs[0].is_file()
+        )
+    ):
+        raise ValueError(
+            archive_format.upper()
+            + " archive creation requires exactly one input file. "
+            "Use TAR first when you need to compress multiple files or a folder."
         )
 
     if not 0 <= level <= 9:

@@ -4,7 +4,9 @@ import pathlib
 import sys
 import traceback
 
-VERSION = "1.7"
+from version import APP_VERSION
+
+VERSION = APP_VERSION
 
 VIDEO_INPUTS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 VIDEO_OUTPUTS = {"mp4", "mkv", "mov", "avi", "webm"}
@@ -199,7 +201,7 @@ def build_parser():
 
     archive_create = archive_commands.add_parser(
         "create",
-        help="Create a 7z or ZIP archive."
+        help="Create an archive with 7-Zip."
     )
     archive_create.add_argument(
         "output",
@@ -214,7 +216,8 @@ def build_parser():
         "-t", "--type",
         dest="archive_type",
         choices=(
-            "7z", "zip", "tar", "gzip", "gz", "bzip2", "bz2", "xz", "wim"
+            "7z", "zip", "tar", "gzip", "gz",
+            "bzip2", "bz2", "xz", "wim"
         ),
         help=(
             "Archive type. Defaults to the output extension. "
@@ -262,13 +265,17 @@ def build_parser():
     archive_extract.add_argument(
         "--here",
         action="store_true",
-        help="Extract directly beside the archive instead of into a "
-             "named folder."
+        help=(
+            "Extract directly beside the archive instead of "
+            "into an archive-named folder."
+        )
     )
     archive_extract.add_argument(
         "--delete-source",
         action="store_true",
-        help="Delete the archive only after extraction succeeds."
+        help=(
+            "Delete the archive only after extraction succeeds."
+        )
     )
     archive_extract.add_argument(
         "--skip-existing",
@@ -296,6 +303,21 @@ def build_parser():
     archive_test.add_argument(
         "-p", "--password",
         help="Archive password."
+    )
+
+    update = commands.add_parser(
+        "update",
+        help="Check for and install a UwUConverter update."
+    )
+    update.add_argument(
+        "--check-only",
+        action="store_true",
+        help="Check for an update without installing it."
+    )
+    update.add_argument(
+        "-y", "--yes",
+        action="store_true",
+        help="Install without asking for confirmation."
     )
 
     commands.add_parser(
@@ -501,6 +523,7 @@ def convert_command(args):
             document_format
         )
 
+
     elif extension in MODEL_INPUTS:
         from model_converter import convert_model
 
@@ -558,7 +581,7 @@ def compress_command(args):
             "--percent must be between 1 and 99."
         )
 
-    from compression import (
+    from media_compression import (
         compress_image_by_percent,
         compress_image_lossless,
         compress_video_by_percent,
@@ -891,6 +914,15 @@ def main(argv=None):
 
         if args.command == "archive":
             return archive_command(args)
+
+        if args.command == "update":
+            from updater import run_update
+
+            return run_update(
+                force=True,
+                check_only=args.check_only,
+                assume_yes=args.yes,
+            )
 
         if args.command == "formats":
             return formats_command()
