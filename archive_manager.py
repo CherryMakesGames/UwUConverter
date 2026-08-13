@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+from ssl_context import create_verified_ssl_context
 
 
 CREATE_FORMATS = {
@@ -166,10 +167,23 @@ def _install_7zip_windows():
     )
 
     try:
-        urllib.request.urlretrieve(
+        request = urllib.request.Request(
             SEVEN_ZIP_WINDOWS_X64_URL,
-            installer_path,
+            headers={
+                "User-Agent": "UwUConverter",
+            },
         )
+
+        with urllib.request.urlopen(
+            request,
+            timeout=60,
+            context=create_verified_ssl_context(),
+        ) as response:
+            with installer_path.open("wb") as output:
+                shutil.copyfileobj(
+                    response,
+                    output,
+                )
     except Exception as error:
         raise RuntimeError(
             "Could not download 7-Zip automatically: "

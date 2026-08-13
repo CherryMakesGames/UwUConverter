@@ -14,6 +14,7 @@ import urllib.error
 import urllib.request
 import webbrowser
 
+from ssl_context import create_verified_ssl_context
 from version import APP_VERSION, GITHUB_OWNER, GITHUB_REPO
 
 
@@ -153,6 +154,7 @@ def request_json(url):
     with urllib.request.urlopen(
         request,
         timeout=15,
+        context=create_verified_ssl_context(),
     ) as response:
         return json.load(response)
 
@@ -391,6 +393,7 @@ def download_asset(asset):
     with urllib.request.urlopen(
         request,
         timeout=60,
+        context=create_verified_ssl_context(),
     ) as response:
         with destination.open(
             "wb"
