@@ -70,6 +70,38 @@ EXTRACT_FORMATS = {
 
 
 
+def _clean_subprocess_environment():
+    environment = os.environ.copy()
+
+    if sys.platform.startswith("linux"):
+        original = environment.get(
+            "LD_LIBRARY_PATH_ORIG"
+        )
+
+        if original is not None:
+            if original:
+                environment[
+                    "LD_LIBRARY_PATH"
+                ] = original
+            else:
+                environment.pop(
+                    "LD_LIBRARY_PATH",
+                    None,
+                )
+        else:
+            environment.pop(
+                "LD_LIBRARY_PATH",
+                None,
+            )
+
+        environment.pop(
+            "LD_PRELOAD",
+            None,
+        )
+
+    return environment
+
+
 def _candidate_7zip_paths():
     candidates = []
 
@@ -77,17 +109,25 @@ def _candidate_7zip_paths():
     if override:
         candidates.append(pathlib.Path(override))
 
-    # Installed command names.
-    for command in ("7z", "7zz", "7za"):
-        found = shutil.which(command)
-        if found:
-            candidates.append(pathlib.Path(found))
-
     if sys.platform.startswith("linux"):
+        for command in ("7zz", "7za", "7z"):
+            found = shutil.which(command)
+            if found:
+                candidates.append(
+                    pathlib.Path(found)
+                )
+
         candidates.append(
             pathlib.Path.home()
             / ".local/share/UwUConverter/tools/7zip/7zz"
         )
+    else:
+        for command in ("7z", "7zz", "7za"):
+            found = shutil.which(command)
+            if found:
+                candidates.append(
+                    pathlib.Path(found)
+                )
 
     if os.name == "nt":
         for env_name in ("ProgramFiles", "ProgramFiles(x86)"):
@@ -202,6 +242,7 @@ def _install_7zip_windows():
                 "/S",
             ],
             check=False,
+            env=_clean_subprocess_environment(),
         )
 
         if result.returncode == 0:
@@ -239,6 +280,7 @@ def _install_7zip_windows():
             command,
         ],
         check=False,
+        env=_clean_subprocess_environment(),
     )
 
     if result.returncode != 0:
@@ -299,10 +341,25 @@ def _install_7zip_linux():
         )
 
         try:
-            urllib.request.urlretrieve(
+            request = urllib.request.Request(
                 url,
-                archive_path,
+                headers={
+                    "User-Agent": "UwUConverter",
+                },
             )
+
+            with urllib.request.urlopen(
+                request,
+                timeout=60,
+                context=create_verified_ssl_context(),
+            ) as response:
+                with archive_path.open(
+                    "wb"
+                ) as output:
+                    shutil.copyfileobj(
+                        response,
+                        output,
+                    )
         except Exception as error:
             raise RuntimeError(
                 "Could not download 7-Zip for Linux automatically: "
@@ -362,6 +419,7 @@ def run_7zip(arguments):
     process = subprocess.run(
         [str(executable), *arguments],
         check=False,
+        env=_clean_subprocess_environment(),
     )
 
     if process.returncode != 0:
