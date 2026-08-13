@@ -1,0 +1,5 @@
+# Update 16
+
+I was about to yell and scream and say fuck this project however I finally got an autoupdater working along with support for right click decompression on linux.
+
+Enjoy the product of my suffering:))
