@@ -1,7 +1,6 @@
 import pathlib
 
 import pandas as pd
-import xlwt
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -119,6 +118,8 @@ def write_sheets(writer, sheets):
 
 
 def save_as_xls(sheets, output_file_path):
+    import xlwt
+
     workbook = xlwt.Workbook()
 
     for sheet_name, dataframe in sheets.items():
@@ -155,7 +156,7 @@ def save_as_pdf(sheets, output_file_path):
     styles = getSampleStyleSheet()
 
     document = SimpleDocTemplate(
-        output_file_path,
+        str(output_file_path),
         pagesize=landscape(A4),
         leftMargin=24,
         rightMargin=24,

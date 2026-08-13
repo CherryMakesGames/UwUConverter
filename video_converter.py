@@ -13,7 +13,7 @@ def convert_video(file_path, output_file_path, output_format):
             transcode(
                 input_file,
                 output_file,
-                "vp8",
+                "libvpx-vp9",
                 "libopus"
             )
 
@@ -21,7 +21,7 @@ def convert_video(file_path, output_file_path, output_format):
             transcode(
                 input_file,
                 output_file,
-                "libsvtav1",
+                "mpeg4",
                 "libmp3lame"
             )
 

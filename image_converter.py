@@ -1,7 +1,6 @@
 import pathlib
 
 from PIL import Image
-import rawpy
 
 
 IMAGE_OUTPUTS = {
@@ -24,6 +23,8 @@ def convert_image(file_path, output_file_path, output_format):
         )
 
     if pathlib.Path(file_path).suffix.lower() == ".raw":
+        import rawpy
+
         with rawpy.imread(file_path) as raw_image:
             rgb = raw_image.postprocess()
             image = Image.fromarray(rgb)

@@ -5,7 +5,6 @@ from odf.opendocument import load as load_odt
 from odf.opendocument import OpenDocumentText
 from odf.text import P
 from odf import teletype
-from pdf2docx import Converter
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
@@ -95,7 +94,7 @@ def read_document_text(file_path):
 
 def save_text_as_pdf(text, output_file_path):
     pdf = canvas.Canvas(
-        output_file_path,
+        str(output_file_path),
         pagesize=A4
     )
 
@@ -146,6 +145,8 @@ def save_text_as_pdf(text, output_file_path):
 
 
 def convert_pdf_to_docx(file_path, output_file_path):
+    from pdf2docx import Converter
+
     converter = Converter(file_path)
 
     try:
