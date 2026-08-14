@@ -2,6 +2,7 @@ import pathlib
 
 import trimesh
 
+
 MODEL_OUTPUTS = {
     "obj",
     "stl",

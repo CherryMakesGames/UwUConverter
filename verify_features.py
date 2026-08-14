@@ -261,10 +261,22 @@ def test_linux_menu_generation():
                 'Extract to Archive-Named Folder and Delete Archive',
             ]:
                 assert label in txt, label
-            files = list(root.glob('uwuconverter-file-*.desktop'))
-            names = [p.name for p in files]
-            assert len(names) == len(set(names))
-            assert files
+            universal = root / 'uwuconverter-files-universal.desktop'
+            assert universal.is_file(), universal
+            universal_text = universal.read_text()
+            for mime in [
+                'image/png;',
+                'video/mp4;',
+                'audio/mpeg;',
+                'application/pdf;',
+                'text/csv;',
+                'model/obj;',
+            ]:
+                assert mime in universal_text, mime
+            assert ' %F' in universal_text
+            assert '__MULTI__' in universal_text
+            old_category_files = list(root.glob('uwuconverter-category-*.desktop'))
+            assert not old_category_files, old_category_files
             """
         )
         env = os.environ.copy()
@@ -278,7 +290,7 @@ def test_linux_menu_generation():
         )
         if result.returncode != 0:
             raise RuntimeError((result.stdout + result.stderr).strip())
-    return "Dolphin file, folder, archive menus generated without duplicate files"
+    return "Dolphin universal mixed-file, folder, and archive menus generated"
 
 
 def test_batch_engine():
@@ -570,14 +582,29 @@ def test_linux_7zip_bootstrap():
         fake_home = temp / "home"
         fake_home.mkdir()
         old_home = os.environ.get("HOME")
-        old_urlretrieve = archive_manager.urllib.request.urlretrieve
+        old_urlopen = archive_manager.urllib.request.urlopen
         old_arch = archive_manager._linux_7zip_architecture
 
-        def fake_download(url, destination):
-            shutil.copy2(package, destination)
-            return str(destination), None
+        class FakeResponse:
+            def __init__(self, source):
+                self.source = pathlib.Path(source)
+                self.handle = None
 
-        archive_manager.urllib.request.urlretrieve = fake_download
+            def __enter__(self):
+                self.handle = self.source.open("rb")
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                if self.handle is not None:
+                    self.handle.close()
+
+            def read(self, size=-1):
+                return self.handle.read(size)
+
+        def fake_urlopen(*args, **kwargs):
+            return FakeResponse(package)
+
+        archive_manager.urllib.request.urlopen = fake_urlopen
         archive_manager._linux_7zip_architecture = lambda: "x86_64"
         os.environ["HOME"] = str(fake_home)
         try:
@@ -587,7 +614,7 @@ def test_linux_7zip_bootstrap():
             if not target.is_file() or not os.access(target, os.X_OK):
                 raise AssertionError("private 7zz was not installed")
         finally:
-            archive_manager.urllib.request.urlretrieve = old_urlretrieve
+            archive_manager.urllib.request.urlopen = old_urlopen
             archive_manager._linux_7zip_architecture = old_arch
             if old_home is None:
                 os.environ.pop("HOME", None)

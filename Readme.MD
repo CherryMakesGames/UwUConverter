@@ -11,25 +11,32 @@ The project currently supports Windows and experimental Linux integration.
 ## Features
 
 - Right-click file conversion
-- Right-click folder batch conversion supporting even millions of files
+- Right-click folder batch conversion
 - Installable CLI command: `UwUConverter`
 - Video conversion
 - Audio conversion
 - Audio extraction from video
 - Image conversion
+- Camera RAW input
 - Document conversion
 - Spreadsheet conversion
 - 3D model conversion
 - Video compression
 - Image compression
+- Safe batch replacement
+- Large-folder batch processing
 - 7-Zip-backed archive creation and extraction
+- Archive listing and integrity testing
 - Archive right-click extraction menus
+- Automatic 7-Zip installation/download when missing
 - Automatic application updates
 - Windows File Explorer integration
 - KDE Dolphin integration
 - Nautilus integration
 - Nemo integration
 - Caja integration
+- Windows GUI actions without console windows
+- Optional batch logs
 - Built-in feature verification script
 
 ![Right Click Me Senpai~](Readme%20Images/Screenshot%202026-08-04%20155443.png)
@@ -225,6 +232,28 @@ kbuildsycoca6
 dolphin --quit
 dolphin &
 ```
+
+## Multi-Select Conversion
+
+UwUConverter supports converting multiple selected files from the right-click menu.
+
+On KDE Dolphin, one universal conversion service menu is registered for all supported conversion MIME types. This means mixed selections can still open the same `Convert With UwUConverter ^-^` submenu.
+
+Example selection:
+
+```text
+image1.png
+image2.png
+video.mp4
+```
+
+Choosing an image conversion converts the compatible image files and skips the video. Choosing a video or audio-extraction action processes the compatible video and skips the images.
+
+Dolphin passes the full selection with `%F`, so the converter receives all selected paths in one invocation.
+
+On Windows, the generated Explorer verbs use the Windows multi-selection verb model so supported right-click actions remain available for multiple selected files.
+
+Archive extraction actions also support selecting multiple archives at once.
 
 # Batch Converter
 

@@ -83,6 +83,55 @@ MIME_TYPES = {
 
 
 
+DOLPHIN_FILE_CATEGORIES = {
+    "video": [
+        ".mp4",
+        ".mkv",
+        ".mov",
+        ".avi",
+        ".webm",
+    ],
+    "audio": [
+        ".mp3",
+        ".wav",
+        ".ogg",
+        ".flac",
+        ".opus",
+    ],
+    "image": [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".ico",
+        ".tif",
+        ".tiff",
+        ".raw",
+    ],
+    "document": [
+        ".pdf",
+        ".docx",
+        ".odt",
+        ".txt",
+    ],
+    "spreadsheet": [
+        ".xlsx",
+        ".xls",
+        ".xlsb",
+        ".xlsm",
+        ".ods",
+        ".csv",
+        ".tsv",
+    ],
+    "model": [
+        ".obj",
+        ".stl",
+        ".ply",
+        ".glb",
+    ],
+}
+
+
 ARCHIVE_MIME_TYPES = [
     "application/x-7z-compressed",
     "application/zip",
@@ -239,100 +288,145 @@ def create_dolphin_file_menus(file_types):
         exist_ok=True
     )
 
-    # Dolphin matches service menus by MIME type. Several extensions
-    # can share one MIME type, so creating one .desktop file per
-    # extension can duplicate the same submenu.
-    grouped = {}
+    # Use one universal service menu for every supported conversion MIME
+    # type. This keeps the menu visible for mixed selections such as:
+    # PNG + JPG + MP4, or PDF + XLSX + WEBP.
+    #
+    # UwUConverter receives the whole selection and skips files for which
+    # the chosen action is not valid.
+    mime_types = []
+    actions = []
+    seen_actions = set()
 
-    for extension, conversions in file_types.items():
-        mime_type = MIME_TYPES.get(
-            extension.lower()
+    category_labels = {
+        "video": "Video",
+        "audio": "Audio",
+        "image": "Image",
+        "document": "Document",
+        "spreadsheet": "Spreadsheet",
+        "model": "3D Model",
+    }
+
+    for category, extensions in (
+        DOLPHIN_FILE_CATEGORIES.items()
+    ):
+        category_label = category_labels.get(
+            category,
+            category.title()
         )
 
-        if not mime_type or not conversions:
-            continue
+        for extension in extensions:
+            mime_type = MIME_TYPES.get(
+                extension
+            )
 
-        actions = flatten_conversions(
-            conversions
-        )
-
-        if not actions:
-            continue
-
-        grouped.setdefault(
-            mime_type,
-            []
-        )
-
-        existing = set(
-            grouped[mime_type]
-        )
-
-        for action in actions:
-            if action not in existing:
-                grouped[mime_type].append(
-                    action
+            if (
+                mime_type
+                and mime_type not in mime_types
+            ):
+                mime_types.append(
+                    mime_type
                 )
-                existing.add(action)
 
-    for mime_type, actions in grouped.items():
-        safe_mime = (
-            mime_type.lower()
-            .replace("/", "-")
-            .replace("+", "_")
-            .replace(".", "_")
-        )
-
-        path = (
-            DOLPHIN_FOLDER
-            / f"uwuconverter-file-{safe_mime}.desktop"
-        )
-
-        action_ids = [
-            f"uwu{index:02d}"
-            for index in range(
-                1,
-                len(actions) + 1
+            conversions = file_types.get(
+                extension,
+                []
             )
-        ]
 
-        lines = [
-            "[Desktop Entry]",
-            "Type=Service",
-            "MimeType=" + mime_type + ";",
-            "Actions=" + ";".join(action_ids) + ";",
-            "X-KDE-Submenu=Convert With UwUConverter ^-^",
-            "X-KDE-Priority=TopLevel",
-            "",
-        ]
-
-        for action_id, (
-            label,
-            convert_type
-        ) in zip(action_ids, actions):
-            command = " ".join(
-                shlex.quote(part)
-                for part in single_file_command(
-                    convert_type
+            for label, convert_type in (
+                flatten_conversions(
+                    conversions
                 )
-            )
+            ):
+                action_key = (
+                    category,
+                    str(convert_type).lower(),
+                )
 
-            lines.extend(
-                [
-                    f"[Desktop Action {action_id}]",
-                    "Name=" + label,
-                    "Icon=document-convert",
-                    "Exec=" + command + " %f",
-                    "",
-                ]
-            )
+                if action_key in seen_actions:
+                    continue
 
-        path.write_text(
-            "\n".join(lines),
-            encoding="utf-8"
+                seen_actions.add(
+                    action_key
+                )
+
+                # The same visible conversion names can exist in multiple
+                # categories, for example "Convert To PDF" for images,
+                # documents and spreadsheets. Prefixing the category keeps
+                # each action unambiguous in one universal menu.
+                actions.append(
+                    (
+                        category_label
+                        + " - "
+                        + label,
+                        convert_type,
+                    )
+                )
+
+    if (
+        not mime_types
+        or not actions
+    ):
+        return
+
+    path = (
+        DOLPHIN_FOLDER
+        / "uwuconverter-files-universal.desktop"
+    )
+
+    action_ids = [
+        f"uwu{index:03d}"
+        for index in range(
+            1,
+            len(actions) + 1
+        )
+    ]
+
+    lines = [
+        "[Desktop Entry]",
+        "Type=Service",
+        "MimeType="
+        + ";".join(mime_types)
+        + ";",
+        "Actions="
+        + ";".join(action_ids)
+        + ";",
+        "X-KDE-Submenu="
+        "Convert With UwUConverter ^-^",
+        "X-KDE-Priority=TopLevel",
+        "",
+    ]
+
+    for action_id, (
+        label,
+        convert_type
+    ) in zip(
+        action_ids,
+        actions
+    ):
+        command = " ".join(
+            shlex.quote(part)
+            for part in multi_file_command(
+                convert_type
+            )
         )
 
-        make_executable(path)
+        lines.extend(
+            [
+                f"[Desktop Action {action_id}]",
+                "Name=" + label,
+                "Icon=document-convert",
+                "Exec=" + command + " %F",
+                "",
+            ]
+        )
+
+    path.write_text(
+        "\n".join(lines),
+        encoding="utf-8"
+    )
+
+    make_executable(path)
 
 
 
@@ -355,29 +449,22 @@ def create_dolphin_archive_menu():
         (
             "uwuExtractHere",
             "Extract Here",
-            ["archive", "extract", "--here"],
+            "ARCHIVE_EXTRACT_HERE",
         ),
         (
             "uwuExtractFolder",
             "Extract to Archive-Named Folder",
-            ["archive", "extract"],
+            "ARCHIVE_EXTRACT_FOLDER",
         ),
         (
             "uwuExtractHereDelete",
             "Extract Here and Delete Archive",
-            [
-                "archive", "extract",
-                "--here",
-                "--delete-source",
-            ],
+            "ARCHIVE_EXTRACT_HERE_DELETE",
         ),
         (
             "uwuExtractFolderDelete",
             "Extract to Archive-Named Folder and Delete Archive",
-            [
-                "archive", "extract",
-                "--delete-source",
-            ],
+            "ARCHIVE_EXTRACT_FOLDER_DELETE",
         ),
     ]
 
@@ -391,16 +478,17 @@ def create_dolphin_archive_menu():
             for action_id, _, _ in actions
         )
         + ";",
-        "X-KDE-Submenu=Extract With UwUConverter ^-^",
+        "X-KDE-Submenu="
+        "Extract With UwUConverter ^-^",
         "X-KDE-Priority=TopLevel",
         "",
     ]
 
-    for action_id, label, arguments in actions:
+    for action_id, label, action in actions:
         command = " ".join(
             shlex.quote(part)
-            for part in archive_cli_command(
-                arguments
+            for part in multi_file_command(
+                action
             )
         )
 
@@ -409,7 +497,7 @@ def create_dolphin_archive_menu():
                 f"[Desktop Action {action_id}]",
                 "Name=" + label,
                 "Icon=archive-extract",
-                "Exec=" + command + " %f",
+                "Exec=" + command + " %F",
                 "",
             ]
         )
@@ -420,6 +508,7 @@ def create_dolphin_archive_menu():
     )
 
     make_executable(path)
+
 
 
 def archive_cli_command(arguments):
@@ -511,11 +600,11 @@ def flatten_conversions(items, prefix=""):
     return result
 
 
-def single_file_command(convert_type):
+def multi_file_command(convert_type):
     if getattr(sys, "frozen", False):
         return [
             sys.executable,
-            "%f",
+            "__MULTI__",
             convert_type,
         ]
 
@@ -529,9 +618,10 @@ def single_file_command(convert_type):
     return [
         sys.executable,
         str(converter),
-        "%f",
+        "__MULTI__",
         convert_type,
     ]
+
 
 
 def build_folder_gui_script():

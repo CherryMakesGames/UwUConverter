@@ -1,0 +1,8 @@
+UwUConverter TLS fix verification
+
+SSL context created successfully.
+Loaded CA certificates: 152
+OpenSSL default verify paths: DefaultVerifyPaths(cafile='/etc/ssl/certs/ca-certificates.crt', capath='/usr/lib/ssl/certs', openssl_cafile_env='SSL_CERT_FILE', openssl_cafile='/usr/lib/ssl/cert.pem', openssl_capath_env='SSL_CERT_DIR', openssl_capath='/usr/lib/ssl/certs')
+CachyOS/Arch bundle exists: False
+
+No certificate verification bypass is used.

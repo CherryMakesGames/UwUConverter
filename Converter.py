@@ -42,6 +42,112 @@ MODEL_OUTPUTS = {
 }
 
 
+
+def _menu_contains_action(items, convert_type):
+    target = convert_type.lower()
+
+    for _, _, action in items:
+        if isinstance(action, list):
+            if _menu_contains_action(
+                action,
+                target
+            ):
+                return True
+            continue
+
+        if str(action).lower() == target:
+            return True
+
+    return False
+
+
+def IsActionSupportedForFile(
+    file_path,
+    convert_type
+):
+    action = convert_type.lower()
+
+    # Archive actions are generated separately from file_types.py.
+    if action.startswith(
+        "archive_extract_"
+    ):
+        return True
+
+    extension = pathlib.Path(
+        file_path
+    ).suffix.lower()
+
+    return _menu_contains_action(
+        file_types.get(
+            extension,
+            []
+        ),
+        action
+    )
+
+
+def ConvertFiles(
+    file_paths,
+    convert_type
+):
+    converted = 0
+    skipped = 0
+    failures = []
+
+    for file_path in file_paths:
+        if not IsActionSupportedForFile(
+            file_path,
+            convert_type
+        ):
+            skipped += 1
+            continue
+
+        try:
+            ConvertFile(
+                file_path,
+                convert_type
+            )
+            converted += 1
+
+        except Exception as error:
+            failures.append(
+                (
+                    file_path,
+                    str(error)
+                )
+            )
+
+    if failures:
+        preview = "\n".join(
+            f"- {path}: {error}"
+            for path, error
+            in failures[:8]
+        )
+
+        if len(failures) > 8:
+            preview += (
+                "\n- ...and "
+                + str(
+                    len(failures) - 8
+                )
+                + " more"
+            )
+
+        raise RuntimeError(
+            "Multi-file conversion finished with errors.\n\n"
+            f"Converted: {converted}\n"
+            f"Skipped: {skipped}\n"
+            f"Failed: {len(failures)}\n\n"
+            + preview
+        )
+
+    return {
+        "converted": converted,
+        "skipped": skipped,
+        "failed": 0,
+    }
+
+
 def ConvertFile(file_path, convert_type):
     action = convert_type.lower()
 
@@ -61,6 +167,21 @@ def ConvertFile(file_path, convert_type):
             file_path,
             action
         )
+        return
+
+    # Windows Explorer can invoke a legacy multi-select verb once for
+    # each selected file. The verb itself may have come from another
+    # selected file type, e.g. "Convert To JPEG" from a PNG while an
+    # OPUS file is also selected.
+    #
+    # Silently ignore files that do not support the chosen action.
+    # This is the same behavior used by ConvertFiles() for mixed
+    # selections and prevents unrelated files from reaching the
+    # conversion router and raising "Unknown conversion type".
+    if not IsActionSupportedForFile(
+        file_path,
+        convert_type
+    ):
         return
 
     input_extension = (
@@ -244,6 +365,15 @@ if __name__ == "__main__":
         if is_uninstalling:
             platform_menu.RemoveExtensions(
                 file_types
+            )
+
+        elif (
+            len(sys.argv) > 3
+            and sys.argv[1] == "__MULTI__"
+        ):
+            ConvertFiles(
+                sys.argv[3:],
+                sys.argv[2]
             )
 
         elif len(sys.argv) > 2:

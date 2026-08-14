@@ -265,6 +265,13 @@ def CreateMenuItems(parent_path, items):
                 reg.REG_SZ,
                 icon_value
             )
+            reg.SetValueEx(
+                item_key,
+                "MultiSelectModel",
+                0,
+                reg.REG_SZ,
+                "Player"
+            )
 
             if isinstance(action, list):
                 reg.SetValueEx(
@@ -319,6 +326,13 @@ def AddExtension(file_type, conversions):
             reg.REG_SZ,
             ""
         )
+        reg.SetValueEx(
+            key,
+            "MultiSelectModel",
+            0,
+            reg.REG_SZ,
+            "Player"
+        )
 
     CreateMenuItems(
         key_path,
@@ -344,6 +358,13 @@ def AddFolderMenu():
             0,
             reg.REG_SZ,
             icon_value
+        )
+        reg.SetValueEx(
+            key,
+            "MultiSelectModel",
+            0,
+            reg.REG_SZ,
+            "Player"
         )
 
     CreateCommand(
@@ -409,6 +430,13 @@ def AddArchiveMenus():
                 reg.REG_SZ,
                 ""
             )
+            reg.SetValueEx(
+                key,
+                "MultiSelectModel",
+                0,
+                reg.REG_SZ,
+                "Player"
+            )
 
         for item_id, label, action in actions:
             item_path = (
@@ -434,6 +462,13 @@ def AddArchiveMenus():
                     0,
                     reg.REG_SZ,
                     icon_value
+                )
+                reg.SetValueEx(
+                    item_key,
+                    "MultiSelectModel",
+                    0,
+                    reg.REG_SZ,
+                    "Player"
                 )
 
             CreateCommand(
