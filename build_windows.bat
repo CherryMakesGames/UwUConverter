@@ -32,6 +32,18 @@ echo Building windowless auto-updater...
 python -m PyInstaller --clean --noconfirm UwUConverterUpdater.spec
 if errorlevel 1 exit /b %errorlevel%
 
+if not exist "dist\UwUConverterUpdater.exe" (
+  echo ERROR: PyInstaller did not create dist\UwUConverterUpdater.exe
+  exit /b 1
+)
+
+for %%I in ("dist\UwUConverterUpdater.exe") do (
+  if %%~zI LEQ 0 (
+    echo ERROR: dist\UwUConverterUpdater.exe is empty
+    exit /b 1
+  )
+)
+
 echo.
 echo Creating final layout...
 if not exist "dist\UwUConverter\cli" mkdir "dist\UwUConverter\cli"
@@ -50,6 +62,18 @@ copy /y ^
   "dist\UwUConverterUpdater.exe" ^
   "dist\UwUConverter\UwUConverterUpdater.exe"
 if errorlevel 1 exit /b %errorlevel%
+
+if not exist "dist\UwUConverter\UwUConverterUpdater.exe" (
+  echo ERROR: Updater is missing from the final application layout
+  exit /b 1
+)
+
+for %%I in ("dist\UwUConverter\UwUConverterUpdater.exe") do (
+  if %%~zI LEQ 0 (
+    echo ERROR: Final UwUConverterUpdater.exe is empty
+    exit /b 1
+  )
+)
 
 echo.
 echo Build complete:

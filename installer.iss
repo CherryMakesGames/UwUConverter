@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "2.1"
+#define MyAppVersion "0.11"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -22,7 +22,15 @@ ChangesEnvironment=yes
 UninstallDisplayIcon={app}\UwUConverter.exe
 
 [Files]
-Source: "dist\UwUConverter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Main GUI bundle. The updater is excluded here and added explicitly below.
+; That makes Inno Setup fail at COMPILE TIME if the updater was not built,
+; instead of producing an installer that fails after installation.
+Source: "dist\UwUConverter\*"; DestDir: "{app}"; Excludes: "UwUConverterUpdater.exe"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; PyInstaller builds the updater as a standalone one-file executable here.
+; Keeping this source explicit guarantees that UwUConverterUpdater.exe is
+; actually embedded in the installer.
+Source: "dist\UwUConverterUpdater.exe"; DestDir: "{app}"; DestName: "UwUConverterUpdater.exe"; Flags: ignoreversion
 
 
 [Registry]
@@ -31,7 +39,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 Filename: "{app}\UwUConverter.exe"; Parameters: ""; Flags: runhidden waituntilterminated postinstall skipifsilent
 
-Filename: "{app}\UwUConverterUpdater.exe"; Parameters: "--auto"; Flags: runhidden nowait postinstall skipifsilent
+Filename: "{app}\UwUConverterUpdater.exe"; Parameters: "--auto"; Flags: runhidden nowait postinstall skipifsilent skipifdoesntexist
 
 [UninstallRun]
 Filename: "{app}\UwUConverter.exe"; Parameters: "--uninstall"; Flags: runhidden waituntilterminated
