@@ -36,7 +36,6 @@ jobs:
           Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist-cli -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force dist-updater -ErrorAction SilentlyContinue
 
       - name: Build main GUI
         shell: pwsh
@@ -80,7 +79,11 @@ jobs:
           python -m PyInstaller `
             --clean `
             --noconfirm `
-            UwUConverterUpdater.spec
+            --onefile `
+            --windowed `
+            --name UwUConverterUpdater `
+            --icon UwUConverter.ico `
+            updater.py
 
           $updater = ".\dist\UwUConverterUpdater.exe"
 
@@ -125,26 +128,6 @@ jobs:
           $updater = ".\dist\UwUConverterUpdater.exe"
           $portableUpdater = ".\dist\UwUConverter\UwUConverterUpdater.exe"
 
-          if (!(Test-Path $gui)) {
-            throw "Missing GUI executable: $gui"
-          }
-
-          if (!(Test-Path $batch)) {
-            throw "Missing batch GUI executable: $batch"
-          }
-
-          if (!(Test-Path $cli)) {
-            throw "Missing CLI executable: $cli"
-          }
-
-          if (!(Test-Path $updater)) {
-            throw "Missing updater executable: $updater"
-          }
-
-          if (!(Test-Path $portableUpdater)) {
-            throw "Missing updater in portable package: $portableUpdater"
-          }
-
           foreach ($file in @(
             $gui,
             $batch,
@@ -152,6 +135,10 @@ jobs:
             $updater,
             $portableUpdater
           )) {
+            if (!(Test-Path $file)) {
+              throw "Missing executable: $file"
+            }
+
             $size = (Get-Item $file).Length
 
             if ($size -le 0) {
@@ -166,8 +153,7 @@ jobs:
 
       - name: Install Inno Setup
         shell: pwsh
-        run: |
-          choco install innosetup --no-progress -y
+        run: choco install innosetup --no-progress -y
 
       - name: Build installer
         shell: pwsh
