@@ -36,6 +36,7 @@ jobs:
           Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist-cli -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force dist-updater -ErrorAction SilentlyContinue
 
       - name: Build main GUI
         shell: pwsh
@@ -73,12 +74,47 @@ jobs:
             --distpath dist-cli `
             cli.py
 
+      - name: Build updater
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            UwUConverterUpdater.spec
+
+          $updater = ".\dist\UwUConverterUpdater.exe"
+
+          if (!(Test-Path $updater)) {
+            throw "Missing updater executable: $updater"
+          }
+
+          $updaterSize = (Get-Item $updater).Length
+
+          if ($updaterSize -le 0) {
+            throw "Updater executable is empty"
+          }
+
+          Write-Host "Updater built successfully: $updaterSize bytes"
+
       - name: Assemble Windows package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force ".\dist\UwUConverter\cli" | Out-Null
-          Copy-Item ".\dist\UwUConverterBatch.exe" ".\dist\UwUConverter\UwUConverterBatch.exe" -Force
-          Copy-Item ".\dist-cli\UwUConverter.exe" ".\dist\UwUConverter\cli\UwUConverter.exe" -Force
+
+          Copy-Item `
+            ".\dist\UwUConverterBatch.exe" `
+            ".\dist\UwUConverter\UwUConverterBatch.exe" `
+            -Force
+
+          Copy-Item `
+            ".\dist-cli\UwUConverter.exe" `
+            ".\dist\UwUConverter\cli\UwUConverter.exe" `
+            -Force
+
+          Copy-Item `
+            ".\dist\UwUConverterUpdater.exe" `
+            ".\dist\UwUConverter\UwUConverterUpdater.exe" `
+            -Force
 
       - name: Verify build
         shell: pwsh
@@ -86,21 +122,57 @@ jobs:
           $gui = ".\dist\UwUConverter\UwUConverter.exe"
           $batch = ".\dist\UwUConverter\UwUConverterBatch.exe"
           $cli = ".\dist\UwUConverter\cli\UwUConverter.exe"
+          $updater = ".\dist\UwUConverterUpdater.exe"
+          $portableUpdater = ".\dist\UwUConverter\UwUConverterUpdater.exe"
 
-          if (!(Test-Path $gui)) { throw "Missing GUI executable: $gui" }
-          if (!(Test-Path $batch)) { throw "Missing batch GUI executable: $batch" }
-          if (!(Test-Path $cli)) { throw "Missing CLI executable: $cli" }
+          if (!(Test-Path $gui)) {
+            throw "Missing GUI executable: $gui"
+          }
+
+          if (!(Test-Path $batch)) {
+            throw "Missing batch GUI executable: $batch"
+          }
+
+          if (!(Test-Path $cli)) {
+            throw "Missing CLI executable: $cli"
+          }
+
+          if (!(Test-Path $updater)) {
+            throw "Missing updater executable: $updater"
+          }
+
+          if (!(Test-Path $portableUpdater)) {
+            throw "Missing updater in portable package: $portableUpdater"
+          }
+
+          foreach ($file in @(
+            $gui,
+            $batch,
+            $cli,
+            $updater,
+            $portableUpdater
+          )) {
+            $size = (Get-Item $file).Length
+
+            if ($size -le 0) {
+              throw "Executable is empty: $file"
+            }
+
+            Write-Host "$file -> $size bytes"
+          }
 
           & $cli --version
           & $cli --help
 
       - name: Install Inno Setup
         shell: pwsh
-        run: choco install innosetup --no-progress -y
+        run: |
+          choco install innosetup --no-progress -y
 
       - name: Build installer
         shell: pwsh
-        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer.iss"'
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer.iss"
 
       - name: Upload portable build
         uses: actions/upload-artifact@v4
