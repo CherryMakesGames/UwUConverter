@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "UwUConverter Browser Integration",
+  "version": "2.3",
+  "description": "Right-click web images and download them converted by the installed UwUConverter app.",
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "notifications"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "uwuconverter@pinksakurastudios.com",
+      "strict_min_version": "109.0"
+    }
+  },
+  "icons": {
+    "16": "icons/icon.png"
+  }
+}

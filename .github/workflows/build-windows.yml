@@ -36,6 +36,8 @@ jobs:
           Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist-cli -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force dist-browser-host -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force dist-browser-setup -ErrorAction SilentlyContinue
 
       - name: Build main GUI
         shell: pwsh
@@ -91,13 +93,66 @@ jobs:
             throw "Missing updater executable: $updater"
           }
 
-          $updaterSize = (Get-Item $updater).Length
-
-          if ($updaterSize -le 0) {
+          if ((Get-Item $updater).Length -le 0) {
             throw "Updater executable is empty"
           }
 
-          Write-Host "Updater built successfully: $updaterSize bytes"
+      - name: Build browser native host
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            --onefile `
+            --name UwUConverterBrowserHost `
+            --distpath dist-browser-host `
+            browser_native_host.py
+
+          $host = ".\dist-browser-host\UwUConverterBrowserHost.exe"
+
+          if (!(Test-Path $host)) {
+            throw "Missing browser native host: $host"
+          }
+
+          if ((Get-Item $host).Length -le 0) {
+            throw "Browser native host is empty"
+          }
+
+      - name: Build browser setup helper
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            --onefile `
+            --windowed `
+            --name UwUConverterBrowserSetup `
+            --icon UwUConverter.ico `
+            --distpath dist-browser-setup `
+            browser_setup.py
+
+          $helper = ".\dist-browser-setup\UwUConverterBrowserSetup.exe"
+
+          if (!(Test-Path $helper)) {
+            throw "Missing browser setup helper: $helper"
+          }
+
+          if ((Get-Item $helper).Length -le 0) {
+            throw "Browser setup helper is empty"
+          }
+
+      - name: Build browser extensions
+        shell: pwsh
+        run: |
+          python .\build_browser_extensions.py
+
+          if (!(Test-Path ".\browser_extension\dist\UwUConverter-Chromium.zip")) {
+            throw "Missing Chromium extension ZIP"
+          }
+
+          if (!(Test-Path ".\browser_extension\dist\UwUConverter-Firefox.zip")) {
+            throw "Missing Firefox extension ZIP"
+          }
 
       - name: Assemble Windows package
         shell: pwsh
@@ -119,22 +174,46 @@ jobs:
             ".\dist\UwUConverter\UwUConverterUpdater.exe" `
             -Force
 
+          Copy-Item `
+            ".\dist-browser-host\UwUConverterBrowserHost.exe" `
+            ".\dist\UwUConverter\UwUConverterBrowserHost.exe" `
+            -Force
+
+          Copy-Item `
+            ".\dist-browser-setup\UwUConverterBrowserSetup.exe" `
+            ".\dist\UwUConverter\UwUConverterBrowserSetup.exe" `
+            -Force
+
+          New-Item -ItemType Directory -Force ".\dist\UwUConverter\browser-extension" | Out-Null
+
+          Copy-Item `
+            ".\browser_extension\chromium" `
+            ".\dist\UwUConverter\browser-extension\chromium" `
+            -Recurse `
+            -Force
+
+          Copy-Item `
+            ".\browser_extension\firefox" `
+            ".\dist\UwUConverter\browser-extension\firefox" `
+            -Recurse `
+            -Force
+
       - name: Verify build
         shell: pwsh
         run: |
-          $gui = ".\dist\UwUConverter\UwUConverter.exe"
-          $batch = ".\dist\UwUConverter\UwUConverterBatch.exe"
-          $cli = ".\dist\UwUConverter\cli\UwUConverter.exe"
-          $updater = ".\dist\UwUConverterUpdater.exe"
-          $portableUpdater = ".\dist\UwUConverter\UwUConverterUpdater.exe"
+          $files = @(
+            ".\dist\UwUConverter\UwUConverter.exe",
+            ".\dist\UwUConverter\UwUConverterBatch.exe",
+            ".\dist\UwUConverter\cli\UwUConverter.exe",
+            ".\dist\UwUConverterUpdater.exe",
+            ".\dist\UwUConverter\UwUConverterUpdater.exe",
+            ".\dist-browser-host\UwUConverterBrowserHost.exe",
+            ".\dist\UwUConverter\UwUConverterBrowserHost.exe",
+            ".\dist-browser-setup\UwUConverterBrowserSetup.exe",
+            ".\dist\UwUConverter\UwUConverterBrowserSetup.exe"
+          )
 
-          foreach ($file in @(
-            $gui,
-            $batch,
-            $cli,
-            $updater,
-            $portableUpdater
-          )) {
+          foreach ($file in $files) {
             if (!(Test-Path $file)) {
               throw "Missing executable: $file"
             }
@@ -148,8 +227,16 @@ jobs:
             Write-Host "$file -> $size bytes"
           }
 
-          & $cli --version
-          & $cli --help
+          if (!(Test-Path ".\dist\UwUConverter\browser-extension\chromium\manifest.json")) {
+            throw "Chromium extension was not copied into the portable package"
+          }
+
+          if (!(Test-Path ".\dist\UwUConverter\browser-extension\firefox\manifest.json")) {
+            throw "Firefox extension was not copied into the portable package"
+          }
+
+          & ".\dist\UwUConverter\cli\UwUConverter.exe" --version
+          & ".\dist\UwUConverter\cli\UwUConverter.exe" --help
 
       - name: Install Inno Setup
         shell: pwsh
@@ -172,4 +259,11 @@ jobs:
         with:
           name: UwUConverter-Windows-Installer
           path: installer-output/*.exe
+          if-no-files-found: error
+
+      - name: Upload browser extensions
+        uses: actions/upload-artifact@v4
+        with:
+          name: UwUConverter-Browser-Extensions
+          path: browser_extension/dist/*.zip
           if-no-files-found: error

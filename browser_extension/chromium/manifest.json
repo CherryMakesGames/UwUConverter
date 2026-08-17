@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "UwUConverter Browser Integration",
+  "version": "2.3",
+  "description": "Right-click web images and download them converted by the installed UwUConverter app.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx4L/u8PIP8zj8obyKZu4DGIj8lyaW9Uz9CUKiyRxCBPGYLhuRgPX790O3/pmoFRIfIpTbqb6i26df0Za8+Jynbl3jAk7s1L5XauPGW6GGgZ15pwlBraSIT8D07886EG3C+kQIOcbo0sLoUjNPSDq8gYzYYqbQ0GtCc5Id3uwNANGmY22O0b3wXN3c2+M8K/arxvzRViZh6YfQVpXgyX1ASfQxAr49nPHFkkYTY7e8zIesk2cDhTm3s8uQBdpMxIMugjo3CtE20GbjjljPOGdMYLrE9UH5RP5PkDbNX5lKJZEgXiDP8zzHvnMQp9KiXPzMPJ5OCpV2tTPtYsilNHHeQIDAQAB",
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "notifications"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icons/icon.png"
+  }
+}

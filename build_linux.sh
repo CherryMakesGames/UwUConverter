@@ -21,7 +21,7 @@ fi
 "$BUILD_PYTHON" -m pip install --upgrade pip
 "$BUILD_PYTHON" -m pip install -r requirements.txt
 
-rm -rf build dist dist-cli dist-updater
+rm -rf build dist dist-cli dist-updater dist-browser-host dist-browser-setup
 
 # GUI used for file-manager registration and right-click conversions.
 "$BUILD_PYTHON" -m PyInstaller \
@@ -61,6 +61,31 @@ rm -rf build dist dist-cli dist-updater
   --distpath dist-updater \
   updater.py
 
+# Native messaging host used by the browser extension. It needs stdio,
+# so keep it as a normal console-subsystem executable. Browsers launch it
+# with redirected pipes.
+"$BUILD_PYTHON" -m PyInstaller \
+  --clean \
+  --noconfirm \
+  --onefile \
+  --name UwUConverterBrowserHost \
+  --distpath dist-browser-host \
+  browser_native_host.py
+
+# Browser installation helper shown after first install and when a newly
+# detected browser has not been offered setup yet.
+"$BUILD_PYTHON" -m PyInstaller \
+  --clean \
+  --noconfirm \
+  --onefile \
+  --windowed \
+  --name UwUConverterBrowserSetup \
+  --distpath dist-browser-setup \
+  browser_setup.py
+
+# Build browser extension ZIPs before assembling the release package.
+"$BUILD_PYTHON" build_browser_extensions.py
+
 mkdir -p dist/UwUConverterGUI/cli
 
 cp dist/UwUConverterBatch \
@@ -72,6 +97,18 @@ cp dist-cli/UwUConverter \
 cp dist-updater/UwUConverterUpdater \
   dist/UwUConverterGUI/UwUConverterUpdater
 
+cp dist-browser-host/UwUConverterBrowserHost \
+  dist/UwUConverterGUI/UwUConverterBrowserHost
+
+cp dist-browser-setup/UwUConverterBrowserSetup \
+  dist/UwUConverterGUI/UwUConverterBrowserSetup
+
+mkdir -p dist/UwUConverterGUI/browser-extension
+cp -a browser_extension/chromium \
+  dist/UwUConverterGUI/browser-extension/chromium
+cp -a browser_extension/firefox \
+  dist/UwUConverterGUI/browser-extension/firefox
+
 cp install_linux.sh \
   dist/UwUConverterGUI/install.sh
 
@@ -81,6 +118,8 @@ cp uninstall_linux.sh \
 chmod +x dist/UwUConverterGUI/UwUConverterGUI
 chmod +x dist/UwUConverterGUI/UwUConverterBatch
 chmod +x dist/UwUConverterGUI/UwUConverterUpdater
+chmod +x dist/UwUConverterGUI/UwUConverterBrowserHost
+chmod +x dist/UwUConverterGUI/UwUConverterBrowserSetup
 chmod +x dist/UwUConverterGUI/cli/UwUConverter
 chmod +x dist/UwUConverterGUI/install.sh
 chmod +x dist/UwUConverterGUI/uninstall.sh
@@ -111,6 +150,10 @@ echo "  dist/UwUConverterGUI"
 echo
 echo "Linux release asset:"
 echo "  $RELEASE_ARCHIVE"
+echo
+echo "Browser extension packages:"
+echo "  browser_extension/dist/UwUConverter-Chromium.zip"
+echo "  browser_extension/dist/UwUConverter-Firefox.zip"
 echo
 echo "Install with:"
 echo "  ./dist/UwUConverterGUI/install.sh"

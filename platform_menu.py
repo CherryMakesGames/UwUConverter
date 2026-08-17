@@ -5,11 +5,17 @@ def CreateExtensions(file_types):
     if sys.platform == "win32":
         import make_key
         make_key.CreateExtensions(file_types)
+
+        import browser_integration
+        browser_integration.RegisterBrowserIntegration()
         return
 
     if sys.platform.startswith("linux"):
         import linux_menu
         linux_menu.CreateExtensions(file_types)
+
+        import browser_integration
+        browser_integration.RegisterBrowserIntegration()
         return
 
     raise NotImplementedError(
@@ -20,11 +26,17 @@ def CreateExtensions(file_types):
 
 def RemoveExtensions(file_types):
     if sys.platform == "win32":
+        import browser_integration
+        browser_integration.RemoveBrowserIntegration()
+
         import make_key
         make_key.RemoveExtensions(file_types)
         return
 
     if sys.platform.startswith("linux"):
+        import browser_integration
+        browser_integration.RemoveBrowserIntegration()
+
         import linux_menu
         linux_menu.RemoveExtensions(file_types)
         return

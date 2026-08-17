@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "2.1"
+#define MyAppVersion "2.3"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -25,12 +25,20 @@ UninstallDisplayIcon={app}\UwUConverter.exe
 ; Main GUI bundle. The updater is excluded here and added explicitly below.
 ; That makes Inno Setup fail at COMPILE TIME if the updater was not built,
 ; instead of producing an installer that fails after installation.
-Source: "dist\UwUConverter\*"; DestDir: "{app}"; Excludes: "UwUConverterUpdater.exe"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\UwUConverter\*"; DestDir: "{app}"; Excludes: "UwUConverterUpdater.exe,UwUConverterBrowserHost.exe,UwUConverterBrowserSetup.exe"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; PyInstaller builds the updater as a standalone one-file executable here.
 ; Keeping this source explicit guarantees that UwUConverterUpdater.exe is
 ; actually embedded in the installer.
 Source: "dist\UwUConverterUpdater.exe"; DestDir: "{app}"; DestName: "UwUConverterUpdater.exe"; Flags: ignoreversion
+
+; Native messaging host used by the Firefox/Chromium browser extension.
+; Keeping this explicit makes installer compilation fail if CI forgot to
+; build the browser host.
+Source: "dist-browser-host\UwUConverterBrowserHost.exe"; DestDir: "{app}"; DestName: "UwUConverterBrowserHost.exe"; Flags: ignoreversion
+
+; User-visible helper that detects installed browsers and assists with extension installation.
+Source: "dist-browser-setup\UwUConverterBrowserSetup.exe"; DestDir: "{app}"; DestName: "UwUConverterBrowserSetup.exe"; Flags: ignoreversion
 
 
 [Registry]
@@ -38,6 +46,10 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\UwUConverter.exe"; Parameters: ""; Flags: runhidden waituntilterminated postinstall skipifsilent
+
+; User-visible assisted extension installation. The helper only opens when a
+; supported browser has not been offered setup before.
+Filename: "{app}\UwUConverterBrowserSetup.exe"; Parameters: "--auto"; Flags: nowait postinstall skipifsilent skipifdoesntexist
 
 Filename: "{app}\UwUConverterUpdater.exe"; Parameters: "--auto"; Flags: runhidden nowait postinstall skipifsilent skipifdoesntexist
 

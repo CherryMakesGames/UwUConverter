@@ -28,6 +28,8 @@ cp -a "$SCRIPT_DIR/." "$APP_DIR/"
 chmod +x "$APP_DIR/UwUConverterGUI" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterBatch" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterUpdater" 2>/dev/null || true
+chmod +x "$APP_DIR/UwUConverterBrowserHost" 2>/dev/null || true
+chmod +x "$APP_DIR/UwUConverterBrowserSetup" 2>/dev/null || true
 chmod +x "$APP_DIR/cli/UwUConverter" 2>/dev/null || true
 
 ln -sfn "$APP_DIR/cli/UwUConverter" "$BIN_DIR/UwUConverter"
@@ -48,8 +50,14 @@ X-GNOME-Autostart-enabled=true
 EOF
 fi
 
-# Refresh file-manager integrations using the newly installed build.
+# Refresh file-manager and native browser-host integrations using the newly installed build.
 "$APP_DIR/UwUConverterGUI"
+
+# Offer browser-extension installation. --auto suppresses repeat prompts on
+# updates for browsers that have already been offered setup.
+if [ -x "$APP_DIR/UwUConverterBrowserSetup" ]; then
+    "$APP_DIR/UwUConverterBrowserSetup" --auto >/dev/null 2>&1 &
+fi
 
 # A fresh install gets an initial non-blocking update check. During an
 # update this would only re-check the release that was just installed.

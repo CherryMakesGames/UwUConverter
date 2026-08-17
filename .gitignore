@@ -1,5 +1,6 @@
 build
 dist
+dist-browser-host
 *.spec
 .venv
 share
@@ -9,4 +10,6 @@ __pycache__
 installer-output
 local.iss
 *.zip
+*.exe
 dist-cli
+browser-native

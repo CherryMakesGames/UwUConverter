@@ -459,7 +459,7 @@ def ask_to_update(
         "A new UwUConverter version is available.\n\n"
         f"Installed: {APP_VERSION}\n"
         f"Latest: {latest_version}\n\n"
-        "Download and install it now?"
+        "Download it and open the installer now?"
     )
 
     try:
@@ -696,10 +696,10 @@ def launch_linux_installer(package_path):
 def launch_windows_installer(
     installer,
 ):
+    # Open the normal Inno Setup UI so an accepted update visibly launches
+    # the installer instead of silently replacing files in the background.
     arguments = [
         str(installer),
-        "/VERYSILENT",
-        "/SUPPRESSMSGBOXES",
         "/NORESTART",
         "/CLOSEAPPLICATIONS",
     ]
