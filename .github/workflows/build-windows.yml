@@ -108,13 +108,13 @@ jobs:
             --distpath dist-browser-host `
             browser_native_host.py
 
-          $host = ".\dist-browser-host\UwUConverterBrowserHost.exe"
+          $browserHost = ".\dist-browser-host\UwUConverterBrowserHost.exe"
 
-          if (!(Test-Path $host)) {
-            throw "Missing browser native host: $host"
+          if (!(Test-Path $browserHost)) {
+            throw "Missing browser native host: $browserHost"
           }
 
-          if ((Get-Item $host).Length -le 0) {
+          if ((Get-Item $browserHost).Length -le 0) {
             throw "Browser native host is empty"
           }
 
