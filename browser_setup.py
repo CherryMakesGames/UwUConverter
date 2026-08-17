@@ -8,8 +8,7 @@ import sys
 import time
 
 
-# Fill these after the extension is published. Until then the helper opens
-# the browser's extension manager and the bundled unpacked extension folder.
+# Fill these after the extension is published. If you feel like paying. which your broke ass wont
 CHROMIUM_STORE_URL = ""
 FIREFOX_AMO_URL = ""
 OPERA_STORE_URL = ""

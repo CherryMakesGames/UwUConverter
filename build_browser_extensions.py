@@ -16,11 +16,31 @@ def build_one(browser):
     if staging.exists():
         shutil.rmtree(staging)
 
+    if not source.is_dir():
+        raise FileNotFoundError(
+            "Browser extension source folder was not found: "
+            + str(source)
+        )
+
     shutil.copytree(source, staging)
-    shutil.copy2(
-        COMMON_BACKGROUND,
-        staging / "background.js",
-    )
+
+    staged_background = staging / "background.js"
+
+    if not staged_background.is_file():
+        if COMMON_BACKGROUND.is_file():
+            shutil.copy2(
+                COMMON_BACKGROUND,
+                staged_background,
+            )
+        else:
+            raise FileNotFoundError(
+                "Missing background.js for "
+                + browser
+                + ". Expected either "
+                + str(source / "background.js")
+                + " or "
+                + str(COMMON_BACKGROUND)
+            )
 
     output = DIST / (
         "UwUConverter-"
