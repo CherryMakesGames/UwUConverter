@@ -320,10 +320,6 @@ def build_parser():
         help="Install without asking for confirmation."
     )
 
-    commands.add_parser(
-        "browser-setup",
-        help="Open the browser-extension installation helper."
-    )
 
     commands.add_parser(
         "formats",
@@ -928,31 +924,6 @@ def main(argv=None):
                 check_only=args.check_only,
                 assume_yes=args.yes,
             )
-
-        if args.command == "browser-setup":
-            if getattr(sys, "frozen", False):
-                helper_name = (
-                    "UwUConverterBrowserSetup.exe"
-                    if os.name == "nt"
-                    else "UwUConverterBrowserSetup"
-                )
-                helper = (
-                    pathlib.Path(sys.executable).resolve().parent.parent
-                    / helper_name
-                )
-                if not helper.is_file():
-                    raise FileNotFoundError(
-                        "Browser setup helper was not found: " + str(helper)
-                    )
-                import subprocess
-                kwargs = {"close_fds": True}
-                if os.name != "nt":
-                    kwargs["start_new_session"] = True
-                subprocess.Popen([str(helper), "--force"], **kwargs)
-                return 0
-
-            from browser_setup import main as browser_setup_main
-            return browser_setup_main(["--force"])
 
         if args.command == "formats":
             return formats_command()

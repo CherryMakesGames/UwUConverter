@@ -29,7 +29,6 @@ chmod +x "$APP_DIR/UwUConverterGUI" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterBatch" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterUpdater" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterBrowserHost" 2>/dev/null || true
-chmod +x "$APP_DIR/UwUConverterBrowserSetup" 2>/dev/null || true
 chmod +x "$APP_DIR/cli/UwUConverter" 2>/dev/null || true
 
 ln -sfn "$APP_DIR/cli/UwUConverter" "$BIN_DIR/UwUConverter"
@@ -50,13 +49,120 @@ X-GNOME-Autostart-enabled=true
 EOF
 fi
 
+first_command() {
+    local candidate
+    for candidate in "$@"; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            command -v "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+flatpak_installed() {
+    command -v flatpak >/dev/null 2>&1 || return 1
+    flatpak info "$1" >/dev/null 2>&1
+}
+
+ask_browser_question() {
+    local browser_name="$1"
+    local message="Install the UwUConverter browser extension for ${browser_name}?"
+
+    if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && command -v kdialog >/dev/null 2>&1; then
+        kdialog --yesno "$message" --title "UwUConverter Browser Integration"
+        return $?
+    fi
+
+    if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && command -v zenity >/dev/null 2>&1; then
+        zenity --question --title="UwUConverter Browser Integration" --text="$message"
+        return $?
+    fi
+
+    if [ -t 0 ]; then
+        printf '%s [Y/n] ' "$message"
+        read -r answer
+        case "${answer:-y}" in
+            y|Y|yes|YES|Yes) return 0 ;;
+            *) return 1 ;;
+        esac
+    fi
+
+    return 1
+}
+
+open_extension_folder_once() {
+    local family="$1"
+    local folder="$APP_DIR/browser-extension/$family"
+    [ -d "$folder" ] || return 0
+
+    if [ "$family" = "chromium" ] && [ "${CHROMIUM_FOLDER_OPENED:-0}" -eq 1 ]; then return 0; fi
+    if [ "$family" = "firefox" ] && [ "${FIREFOX_FOLDER_OPENED:-0}" -eq 1 ]; then return 0; fi
+
+    if command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$folder" >/dev/null 2>&1 &
+    fi
+
+    if [ "$family" = "chromium" ]; then CHROMIUM_FOLDER_OPENED=1; else FIREFOX_FOLDER_OPENED=1; fi
+}
+
+offer_native_browser() {
+    local browser_name="$1"
+    local manager_url="$2"
+    local family="$3"
+    shift 3
+    local executable
+    executable="$(first_command "$@")" || return 0
+
+    if ask_browser_question "$browser_name"; then
+        "$executable" "$manager_url" >/dev/null 2>&1 &
+        open_extension_folder_once "$family"
+    fi
+}
+
+offer_flatpak_browser() {
+    local browser_name="$1"
+    local app_id="$2"
+    local manager_url="$3"
+    local family="$4"
+    flatpak_installed "$app_id" || return 0
+
+    if ask_browser_question "$browser_name (Flatpak)"; then
+        flatpak run "$app_id" "$manager_url" >/dev/null 2>&1 &
+        open_extension_folder_once "$family"
+    fi
+}
+
+offer_browser_integrations() {
+    CHROMIUM_FOLDER_OPENED=0
+    FIREFOX_FOLDER_OPENED=0
+
+    offer_native_browser "Google Chrome" "chrome://extensions" "chromium" google-chrome google-chrome-stable
+    offer_native_browser "Chromium" "chrome://extensions" "chromium" chromium chromium-browser
+    offer_native_browser "Microsoft Edge" "edge://extensions" "chromium" microsoft-edge microsoft-edge-stable microsoft-edge-beta microsoft-edge-dev
+    offer_native_browser "Opera" "opera://extensions" "chromium" opera opera-stable opera-beta opera-developer
+    offer_native_browser "Opera GX" "opera://extensions" "chromium" opera-gx opera-gx-stable
+    offer_native_browser "Brave" "brave://extensions" "chromium" brave-browser brave-browser-stable brave
+    offer_native_browser "Vivaldi" "vivaldi://extensions" "chromium" vivaldi vivaldi-stable vivaldi-snapshot
+    offer_native_browser "Firefox" "about:debugging#/runtime/this-firefox" "firefox" firefox firefox-esr
+
+    offer_flatpak_browser "Google Chrome" "com.google.Chrome" "chrome://extensions" "chromium"
+    offer_flatpak_browser "Chromium" "org.chromium.Chromium" "chrome://extensions" "chromium"
+    offer_flatpak_browser "Microsoft Edge" "com.microsoft.Edge" "edge://extensions" "chromium"
+    offer_flatpak_browser "Opera" "com.opera.Opera" "opera://extensions" "chromium"
+    offer_flatpak_browser "Opera GX" "com.opera.opera-gx" "opera://extensions" "chromium"
+    offer_flatpak_browser "Brave" "com.brave.Browser" "brave://extensions" "chromium"
+    offer_flatpak_browser "Vivaldi" "com.vivaldi.Vivaldi" "vivaldi://extensions" "chromium"
+    offer_flatpak_browser "Firefox" "org.mozilla.firefox" "about:debugging#/runtime/this-firefox" "firefox"
+}
+
 # Refresh file-manager and native browser-host integrations using the newly installed build.
 "$APP_DIR/UwUConverterGUI"
 
-# Offer browser-extension installation. --auto suppresses repeat prompts on
-# updates for browsers that have already been offered setup.
-if [ -x "$APP_DIR/UwUConverterBrowserSetup" ]; then
-    "$APP_DIR/UwUConverterBrowserSetup" --auto >/dev/null 2>&1 &
+# Browser questions are part of the initial Linux installer itself.
+# Updates skip them so users are not asked again on every update.
+if [ "$UPDATE_MODE" -eq 0 ]; then
+    offer_browser_integrations
 fi
 
 # A fresh install gets an initial non-blocking update check. During an

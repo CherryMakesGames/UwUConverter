@@ -12,7 +12,13 @@ if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 if exist dist-cli rmdir /s /q dist-cli
 if exist dist-browser-host rmdir /s /q dist-browser-host
-if exist dist-browser-setup rmdir /s /q dist-browser-setup
+if exist build-modern-shell rmdir /s /q build-modern-shell
+if exist dist-modern-shell rmdir /s /q dist-modern-shell
+
+echo.
+echo Generating Windows package identity metadata...
+python windows_modern_shell\generate_package_manifest.py
+if errorlevel 1 exit /b %errorlevel%
 
 echo.
 echo Building windowless GUI executable...
@@ -63,15 +69,6 @@ for %%I in ("dist-browser-host\UwUConverterBrowserHost.exe") do (
   )
 )
 
-echo.
-echo Building browser installation helper...
-python -m PyInstaller --clean --noconfirm --onefile --windowed --name UwUConverterBrowserSetup --icon UwUConverter.ico --distpath dist-browser-setup browser_setup.py
-if errorlevel 1 exit /b %errorlevel%
-
-if not exist "dist-browser-setup\UwUConverterBrowserSetup.exe" (
-  echo ERROR: PyInstaller did not create dist-browser-setup\UwUConverterBrowserSetup.exe
-  exit /b 1
-)
 
 echo.
 echo Building browser extension packages...
@@ -85,6 +82,26 @@ if not exist "browser_extension\dist\UwUConverter-Chromium.zip" (
 
 if not exist "browser_extension\dist\UwUConverter-Firefox.zip" (
   echo ERROR: Firefox browser extension ZIP was not created
+  exit /b 1
+)
+
+echo.
+echo Building Windows 11 modern context-menu extension...
+powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File windows_modern_shell\build_modern_shell.ps1
+if errorlevel 1 exit /b %errorlevel%
+
+if not exist "dist-modern-shell\UwUConverterShell.dll" (
+  echo ERROR: Modern shell DLL was not created
+  exit /b 1
+)
+
+if not exist "dist-modern-shell\UwUConverterShell.msix" (
+  echo ERROR: Modern shell identity package was not created
+  exit /b 1
+)
+
+if not exist "dist-modern-shell\UwUConverterShell.cer" (
+  echo ERROR: Modern shell certificate was not created
   exit /b 1
 )
 
@@ -124,16 +141,25 @@ copy /y ^
   "dist\UwUConverter\UwUConverterBrowserHost.exe"
 if errorlevel 1 exit /b %errorlevel%
 
-copy /y ^
-  "dist-browser-setup\UwUConverterBrowserSetup.exe" ^
-  "dist\UwUConverter\UwUConverterBrowserSetup.exe"
-if errorlevel 1 exit /b %errorlevel%
 
 if exist "dist\UwUConverter\browser-extension" rmdir /s /q "dist\UwUConverter\browser-extension"
 mkdir "dist\UwUConverter\browser-extension"
 xcopy /e /i /y "browser_extension\chromium" "dist\UwUConverter\browser-extension\chromium" >nul
 if errorlevel 1 exit /b %errorlevel%
 xcopy /e /i /y "browser_extension\firefox" "dist\UwUConverter\browser-extension\firefox" >nul
+if errorlevel 1 exit /b %errorlevel%
+
+if exist "dist\UwUConverter\modern-shell" rmdir /s /q "dist\UwUConverter\modern-shell"
+mkdir "dist\UwUConverter\modern-shell"
+copy /y "dist-modern-shell\UwUConverterShell.dll" "dist\UwUConverter\modern-shell\UwUConverterShell.dll" >nul
+if errorlevel 1 exit /b %errorlevel%
+copy /y "dist-modern-shell\UwUConverterShell.msix" "dist\UwUConverter\modern-shell\UwUConverterShell.msix" >nul
+if errorlevel 1 exit /b %errorlevel%
+copy /y "dist-modern-shell\UwUConverterShell.cer" "dist\UwUConverter\modern-shell\UwUConverterShell.cer" >nul
+if errorlevel 1 exit /b %errorlevel%
+copy /y "windows_modern_shell\register_shell.ps1" "dist\UwUConverter\modern-shell\register_shell.ps1" >nul
+if errorlevel 1 exit /b %errorlevel%
+copy /y "windows_modern_shell\unregister_shell.ps1" "dist\UwUConverter\modern-shell\unregister_shell.ps1" >nul
 if errorlevel 1 exit /b %errorlevel%
 
 if not exist "dist\UwUConverter\UwUConverterBrowserHost.exe" (
@@ -155,7 +181,8 @@ echo   Batch GUI: dist\UwUConverter\UwUConverterBatch.exe
 echo   CLI: dist\UwUConverter\cli\UwUConverter.exe
 echo   Updater: dist\UwUConverter\UwUConverterUpdater.exe
 echo   Browser host: dist\UwUConverter\UwUConverterBrowserHost.exe
-echo   Browser setup: dist\UwUConverter\UwUConverterBrowserSetup.exe
+echo   Modern shell DLL: dist\UwUConverter\modern-shell\UwUConverterShell.dll
+echo   Modern shell package: dist\UwUConverter\modern-shell\UwUConverterShell.msix
 echo   Chromium extension: browser_extension\dist\UwUConverter-Chromium.zip
 echo   Firefox extension: browser_extension\dist\UwUConverter-Firefox.zip
 echo.

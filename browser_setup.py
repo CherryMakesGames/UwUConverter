@@ -10,7 +10,7 @@ import time
 
 # Fill these after the extension is published. If you feel like paying. which your broke ass wont
 CHROMIUM_STORE_URL = ""
-FIREFOX_AMO_URL = ""
+FIREFOX_AMO_URL = "https://addons.mozilla.org/en-US/firefox/addon/uwuconverter-browser/"
 OPERA_STORE_URL = ""
 
 

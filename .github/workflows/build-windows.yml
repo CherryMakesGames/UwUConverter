@@ -37,7 +37,13 @@ jobs:
           Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist-cli -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force dist-browser-host -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force dist-browser-setup -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force build-modern-shell -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force dist-modern-shell -ErrorAction SilentlyContinue
+
+      - name: Generate Windows identity metadata
+        shell: pwsh
+        run: |
+          python .\windows_modern_shell\generate_package_manifest.py
 
       - name: Build main GUI
         shell: pwsh
@@ -49,6 +55,7 @@ jobs:
             --windowed `
             --name UwUConverter `
             --icon UwUConverter.ico `
+            --manifest windows_modern_shell/generated/UwUConverter.exe.manifest `
             --add-data "UwUConverter.ico;." `
             Converter.py
 
@@ -118,28 +125,6 @@ jobs:
             throw "Browser native host is empty"
           }
 
-      - name: Build browser setup helper
-        shell: pwsh
-        run: |
-          python -m PyInstaller `
-            --clean `
-            --noconfirm `
-            --onefile `
-            --windowed `
-            --name UwUConverterBrowserSetup `
-            --icon UwUConverter.ico `
-            --distpath dist-browser-setup `
-            browser_setup.py
-
-          $helper = ".\dist-browser-setup\UwUConverterBrowserSetup.exe"
-
-          if (!(Test-Path $helper)) {
-            throw "Missing browser setup helper: $helper"
-          }
-
-          if ((Get-Item $helper).Length -le 0) {
-            throw "Browser setup helper is empty"
-          }
 
       - name: Build browser extensions
         shell: pwsh
@@ -152,6 +137,25 @@ jobs:
 
           if (!(Test-Path ".\browser_extension\dist\UwUConverter-Firefox.zip")) {
             throw "Missing Firefox extension ZIP"
+          }
+
+      - name: Build Windows 11 modern context menu
+        shell: pwsh
+        run: |
+          .\windows_modern_shell\build_modern_shell.ps1
+
+          foreach ($file in @(
+            ".\dist-modern-shell\UwUConverterShell.dll",
+            ".\dist-modern-shell\UwUConverterShell.msix",
+            ".\dist-modern-shell\UwUConverterShell.cer"
+          )) {
+            if (!(Test-Path $file)) {
+              throw "Missing modern shell artifact: $file"
+            }
+
+            if ((Get-Item $file).Length -le 0) {
+              throw "Modern shell artifact is empty: $file"
+            }
           }
 
       - name: Assemble Windows package
@@ -179,10 +183,6 @@ jobs:
             ".\dist\UwUConverter\UwUConverterBrowserHost.exe" `
             -Force
 
-          Copy-Item `
-            ".\dist-browser-setup\UwUConverterBrowserSetup.exe" `
-            ".\dist\UwUConverter\UwUConverterBrowserSetup.exe" `
-            -Force
 
           New-Item -ItemType Directory -Force ".\dist\UwUConverter\browser-extension" | Out-Null
 
@@ -198,6 +198,14 @@ jobs:
             -Recurse `
             -Force
 
+          New-Item -ItemType Directory -Force ".\dist\UwUConverter\modern-shell" | Out-Null
+
+          Copy-Item ".\dist-modern-shell\UwUConverterShell.dll" ".\dist\UwUConverter\modern-shell\UwUConverterShell.dll" -Force
+          Copy-Item ".\dist-modern-shell\UwUConverterShell.msix" ".\dist\UwUConverter\modern-shell\UwUConverterShell.msix" -Force
+          Copy-Item ".\dist-modern-shell\UwUConverterShell.cer" ".\dist\UwUConverter\modern-shell\UwUConverterShell.cer" -Force
+          Copy-Item ".\windows_modern_shell\register_shell.ps1" ".\dist\UwUConverter\modern-shell\register_shell.ps1" -Force
+          Copy-Item ".\windows_modern_shell\unregister_shell.ps1" ".\dist\UwUConverter\modern-shell\unregister_shell.ps1" -Force
+
       - name: Verify build
         shell: pwsh
         run: |
@@ -208,9 +216,7 @@ jobs:
             ".\dist\UwUConverterUpdater.exe",
             ".\dist\UwUConverter\UwUConverterUpdater.exe",
             ".\dist-browser-host\UwUConverterBrowserHost.exe",
-            ".\dist\UwUConverter\UwUConverterBrowserHost.exe",
-            ".\dist-browser-setup\UwUConverterBrowserSetup.exe",
-            ".\dist\UwUConverter\UwUConverterBrowserSetup.exe"
+            ".\dist\UwUConverter\UwUConverterBrowserHost.exe"
           )
 
           foreach ($file in $files) {
@@ -233,6 +239,18 @@ jobs:
 
           if (!(Test-Path ".\dist\UwUConverter\browser-extension\firefox\manifest.json")) {
             throw "Firefox extension was not copied into the portable package"
+          }
+
+          foreach ($file in @(
+            ".\dist\UwUConverter\modern-shell\UwUConverterShell.dll",
+            ".\dist\UwUConverter\modern-shell\UwUConverterShell.msix",
+            ".\dist\UwUConverter\modern-shell\UwUConverterShell.cer",
+            ".\dist\UwUConverter\modern-shell\register_shell.ps1",
+            ".\dist\UwUConverter\modern-shell\unregister_shell.ps1"
+          )) {
+            if (!(Test-Path $file)) {
+              throw "Modern shell file missing from final package: $file"
+            }
           }
 
           & ".\dist\UwUConverter\cli\UwUConverter.exe" --version

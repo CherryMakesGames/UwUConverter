@@ -1,0 +1,4 @@
+LIBRARY "UwUConverterShell"
+EXPORTS
+    DllCanUnloadNow PRIVATE
+    DllGetClassObject PRIVATE
