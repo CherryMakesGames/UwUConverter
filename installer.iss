@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "2.3"
+#define MyAppVersion "0.11"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -146,7 +146,7 @@ begin
   begin
     BrowserIndex := BrowserPage.CheckListBox.Items.Count;
     BrowserPage.Add(BrowserName);
-    BrowserPage.Selected[BrowserIndex] := True;
+    BrowserPage.Values[BrowserIndex] := True;
   end;
 end;
 
@@ -202,7 +202,7 @@ end;
 
 function BrowserSelected(BrowserIndex: Integer): Boolean;
 begin
-  Result := (BrowserIndex >= 0) and BrowserPage.Selected[BrowserIndex];
+  Result := (BrowserIndex >= 0) and BrowserPage.Values[BrowserIndex];
 end;
 
 procedure LaunchBrowser(ExecutablePath, TargetUrl: String);
