@@ -20,7 +20,7 @@ function Find-WindowsSdkTool([string]$Name) {
         throw "$Name was not found in the Windows SDK."
     }
 
-    return $candidate.FullN ame
+    return $candidate.FullName
 }
 
 Push-Location $root
