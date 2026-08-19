@@ -33,4 +33,3 @@ set_target_properties(
     PREFIX ""
     OUTPUT_NAME "UwUConverterShell"
 )
-                                                                  n
