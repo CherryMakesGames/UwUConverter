@@ -457,6 +457,7 @@ procedure RegisterModernShell();
 var
   PowerShellPath: String;
   ScriptPath: String;
+  LogPath: String;
   Parameters: String;
   ResultCode: Integer;
 begin
@@ -472,6 +473,16 @@ begin
     Log('Modern shell registration script was not installed.');
     exit;
   end;
+
+  LogPath := ExpandConstant(
+    '{app}\modern-shell\registration.log'
+  );
+
+  SaveStringToFile(
+    LogPath,
+    'UwUConverter modern shell registration started by Setup.' + #13#10,
+    False
+  );
 
   PowerShellPath := ExpandConstant(
     '{sys}\WindowsPowerShell\v1.0\powershell.exe'
@@ -499,8 +510,10 @@ begin
     MsgBox(
       'UwUConverter was installed, but the Windows 11 modern context menu '
       + 'could not be registered.' + #13#10 + #13#10
+      + 'PowerShell exit code: ' + IntToStr(ResultCode)
+      + #13#10 + #13#10
       + 'Registration details were saved to:' + #13#10
-      + ExpandConstant('{app}\modern-shell\registration.log')
+      + LogPath
       + #13#10 + #13#10
       + 'The classic Show more options menu will still work.',
       mbInformation,
