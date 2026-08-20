@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "0.11"
+#define MyAppVersion "2.3"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -499,6 +499,9 @@ begin
     MsgBox(
       'UwUConverter was installed, but the Windows 11 modern context menu '
       + 'could not be registered.' + #13#10 + #13#10
+      + 'Registration details were saved to:' + #13#10
+      + ExpandConstant('{app}\modern-shell\registration.log')
+      + #13#10 + #13#10
       + 'The classic Show more options menu will still work.',
       mbInformation,
       MB_OK
