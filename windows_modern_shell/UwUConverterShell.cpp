@@ -161,16 +161,25 @@ HRESULT ReadSelection(IShellItemArray* items, std::vector<SelectedItem>& output)
             continue;
         }
 
-        SFGAOF attributes = 0;
-        item->GetAttributes(SFGAO_FOLDER, &attributes);
-
         PWSTR rawPath = nullptr;
         hr = item->GetDisplayName(SIGDN_FILESYSPATH, &rawPath);
 
         if (SUCCEEDED(hr) && rawPath) {
             SelectedItem selected;
             selected.path = rawPath;
-            selected.isFolder = (attributes & SFGAO_FOLDER) != 0;
+
+            // Explorer can expose archive files (especially .zip) with the
+            // SFGAO_FOLDER shell attribute because they are browsable like
+            // folders. That does not make them filesystem directories.
+            //
+            // Use filesystem attributes instead so archive files keep their
+            // extension and get extraction actions, while Batch Convert Folder
+            // remains limited to actual directories.
+            DWORD fileAttributes = GetFileAttributesW(rawPath);
+
+            selected.isFolder =
+                fileAttributes != INVALID_FILE_ATTRIBUTES &&
+                (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
             if (!selected.isFolder) {
                 const wchar_t* extension = PathFindExtensionW(rawPath);
