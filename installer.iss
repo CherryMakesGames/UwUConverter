@@ -167,10 +167,10 @@ begin
   if RegQueryDWordValue(
     HKEY_CURRENT_USER,
     'Software\Pink Sakura Studios\UwUConverter',
-    'BrowserQuestionsShown',
+    'BrowserQuestionsVersion',
     BrowserSetupValue
   ) then
-    BrowserQuestionsAlreadyShown := BrowserSetupValue <> 0;
+    BrowserQuestionsAlreadyShown := BrowserSetupValue >= 2;
 
   BrowserPage := CreateInputOptionPage(
     wpSelectTasks,
@@ -272,8 +272,8 @@ begin
   RegWriteDWordValue(
     HKEY_CURRENT_USER,
     'Software\Pink Sakura Studios\UwUConverter',
-    'BrowserQuestionsShown',
-    1
+    'BrowserQuestionsVersion',
+    2
   );
 end;
 
@@ -456,10 +456,14 @@ end;
 procedure RegisterModernShell();
 var
   PowerShellPath: String;
+  CertUtilPath: String;
+  CertPath: String;
   ScriptPath: String;
   LogPath: String;
   Parameters: String;
+  TrustParameters: String;
   ResultCode: Integer;
+  TrustResultCode: Integer;
 begin
   if not IsWindows11OrLater() then
     exit;
@@ -468,11 +472,9 @@ begin
     '{app}\modern-shell\register_shell.ps1'
   );
 
-  if not FileExists(ScriptPath) then
-  begin
-    Log('Modern shell registration script was not installed.');
-    exit;
-  end;
+  CertPath := ExpandConstant(
+    '{app}\modern-shell\UwUConverterShell.cer'
+  );
 
   LogPath := ExpandConstant(
     '{app}\modern-shell\registration.log'
@@ -484,6 +486,77 @@ begin
     False
   );
 
+  if not FileExists(ScriptPath) then
+  begin
+    SaveStringToFile(
+      LogPath,
+      'ERROR: register_shell.ps1 was not installed.' + #13#10,
+      True
+    );
+    exit;
+  end;
+
+  if not FileExists(CertPath) then
+  begin
+    SaveStringToFile(
+      LogPath,
+      'ERROR: UwUConverterShell.cer was not installed.' + #13#10,
+      True
+    );
+    exit;
+  end;
+
+  CertUtilPath := ExpandConstant(
+    '{sys}\certutil.exe'
+  );
+
+  TrustParameters :=
+    '-addstore -f TrustedPeople "' + CertPath + '"';
+
+  SaveStringToFile(
+    LogPath,
+    'Requesting elevation to trust the MSIX certificate in LocalMachine\TrustedPeople.'
+    + #13#10,
+    True
+  );
+
+  if (not ShellExec(
+    'runas',
+    CertUtilPath,
+    TrustParameters,
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    TrustResultCode
+  )) or (TrustResultCode <> 0) then
+  begin
+    SaveStringToFile(
+      LogPath,
+      'ERROR: certutil trust step failed or UAC was cancelled. Exit code: '
+      + IntToStr(TrustResultCode) + #13#10,
+      True
+    );
+
+    MsgBox(
+      'UwUConverter was installed, but Windows could not trust the '
+      + 'development certificate required for the Windows 11 modern '
+      + 'context menu.' + #13#10 + #13#10
+      + 'Certificate trust exit code: ' + IntToStr(TrustResultCode)
+      + #13#10 + #13#10
+      + 'Details:' + #13#10 + LogPath,
+      mbInformation,
+      MB_OK
+    );
+
+    exit;
+  end;
+
+  SaveStringToFile(
+    LogPath,
+    'Certificate trust step completed successfully.' + #13#10,
+    True
+  );
+
   PowerShellPath := ExpandConstant(
     '{sys}\WindowsPowerShell\v1.0\powershell.exe'
   );
@@ -493,20 +566,39 @@ begin
     + '-ExecutionPolicy Bypass -File "' + ScriptPath + '" '
     + '-InstallDir "' + ExpandConstant('{app}') + '"';
 
-  if (not Exec(
+  SaveStringToFile(
+    LogPath,
+    'Starting register_shell.ps1.' + #13#10,
+    True
+  );
+
+  if not Exec(
     PowerShellPath,
     Parameters,
     '',
     SW_HIDE,
     ewWaitUntilTerminated,
     ResultCode
-  )) or (ResultCode <> 0) then
+  ) then
   begin
-    Log(
-      'Windows 11 modern context-menu registration failed with exit code '
-      + IntToStr(ResultCode)
+    SaveStringToFile(
+      LogPath,
+      'ERROR: Windows PowerShell could not be started.' + #13#10,
+      True
     );
+    ResultCode := -1;
+  end
+  else
+  begin
+    SaveStringToFile(
+      LogPath,
+      'register_shell.ps1 exit code: ' + IntToStr(ResultCode) + #13#10,
+      True
+    );
+  end;
 
+  if ResultCode <> 0 then
+  begin
     MsgBox(
       'UwUConverter was installed, but the Windows 11 modern context menu '
       + 'could not be registered.' + #13#10 + #13#10
@@ -527,7 +619,9 @@ var
   PowerShellPath: String;
   ScriptPath: String;
   Parameters: String;
+  CertificateParameters: String;
   ResultCode: Integer;
+  CertificateResultCode: Integer;
 begin
   if not IsWindows11OrLater() then
     exit;
@@ -557,8 +651,28 @@ begin
     ResultCode
   )) or (ResultCode <> 0) then
     Log(
-      'Windows 11 modern context-menu unregistration returned exit code '
+      'Windows 11 modern context-menu package unregistration returned exit code '
       + IntToStr(ResultCode)
+    );
+
+  CertificateParameters :=
+    '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden '
+    + '-ExecutionPolicy Bypass -File "' + ScriptPath + '" '
+    + '-InstallDir "' + ExpandConstant('{app}') + '" '
+    + '-CertificateOnly';
+
+  if (not ShellExec(
+    'runas',
+    PowerShellPath,
+    CertificateParameters,
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    CertificateResultCode
+  )) or (CertificateResultCode <> 0) then
+    Log(
+      'Windows 11 modern context-menu certificate cleanup returned exit code '
+      + IntToStr(CertificateResultCode)
     );
 end;
 
