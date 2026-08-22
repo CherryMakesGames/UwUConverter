@@ -459,7 +459,7 @@ def ask_to_update(
         "A new UwUConverter version is available.\n\n"
         f"Installed: {APP_VERSION}\n"
         f"Latest: {latest_version}\n\n"
-        "Download it and open the installer now?"
+        "Download it and open the full installer now?"
     )
 
     try:
@@ -696,20 +696,23 @@ def launch_linux_installer(package_path):
 def launch_windows_installer(
     installer,
 ):
-    # Open the normal Inno Setup UI so an accepted update visibly launches
-    # the installer instead of silently replacing files in the background.
-    arguments = [
-        str(installer),
-        "/NORESTART",
-        "/CLOSEAPPLICATIONS",
-    ]
+    installer = pathlib.Path(
+        installer
+    ).resolve()
 
-    subprocess.Popen(
-        arguments,
-        cwd=str(
-            installer.parent
-        ),
-        close_fds=True,
+    if not installer.is_file():
+        raise FileNotFoundError(
+            "Downloaded Windows installer does not exist: "
+            + str(installer)
+        )
+
+    # Updates should behave exactly like double-clicking the installer.
+    # Do not pass Inno Setup silent/update flags here. Using ShellExecute
+    # through os.startfile also explicitly launches the GUI in the normal
+    # visible desktop session instead of inheriting updater window state.
+    os.startfile(
+        str(installer),
+        "open",
     )
 
 
