@@ -21,7 +21,7 @@ fi
 "$BUILD_PYTHON" -m pip install --upgrade pip
 "$BUILD_PYTHON" -m pip install -r requirements.txt
 
-rm -rf build dist dist-cli dist-updater dist-browser-host
+rm -rf build dist dist-cli dist-updater dist-browser-host dist-installer
 
 # GUI used for file-manager registration and right-click conversions.
 "$BUILD_PYTHON" -m PyInstaller \
@@ -72,6 +72,17 @@ rm -rf build dist dist-cli dist-updater dist-browser-host
   --distpath dist-browser-host \
   browser_native_host.py
 
+# Graphical Linux installer. install.sh remains available as the terminal
+# backend and for headless/package-maintainer use.
+"$BUILD_PYTHON" -m PyInstaller \
+  --clean \
+  --noconfirm \
+  --onefile \
+  --windowed \
+  --name UwUConverterInstaller \
+  --distpath dist-installer \
+  linux_installer.py
+
 
 # Build browser extension ZIPs before assembling the release package.
 "$BUILD_PYTHON" build_browser_extensions.py
@@ -90,6 +101,9 @@ cp dist-updater/UwUConverterUpdater \
 cp dist-browser-host/UwUConverterBrowserHost \
   dist/UwUConverterGUI/UwUConverterBrowserHost
 
+cp dist-installer/UwUConverterInstaller \
+  dist/UwUConverterGUI/UwUConverterInstaller
+
 
 mkdir -p dist/UwUConverterGUI/browser-extension
 cp -a browser_extension/chromium \
@@ -107,6 +121,7 @@ chmod +x dist/UwUConverterGUI/UwUConverterGUI
 chmod +x dist/UwUConverterGUI/UwUConverterBatch
 chmod +x dist/UwUConverterGUI/UwUConverterUpdater
 chmod +x dist/UwUConverterGUI/UwUConverterBrowserHost
+chmod +x dist/UwUConverterGUI/UwUConverterInstaller
 chmod +x dist/UwUConverterGUI/cli/UwUConverter
 chmod +x dist/UwUConverterGUI/install.sh
 chmod +x dist/UwUConverterGUI/uninstall.sh
@@ -142,5 +157,8 @@ echo "Browser extension packages:"
 echo "  browser_extension/dist/UwUConverter-Chromium.zip"
 echo "  browser_extension/dist/UwUConverter-Firefox.zip"
 echo
-echo "Install with:"
+echo "Graphical install:"
+echo "  ./dist/UwUConverterGUI/UwUConverterInstaller"
+echo
+echo "Terminal install:"
 echo "  ./dist/UwUConverterGUI/install.sh"

@@ -650,6 +650,10 @@ def extract_linux_package(package_path):
         )
 
     install_script = installers[0]
+    gui_installer = (
+        install_script.parent
+        / "UwUConverterInstaller"
+    )
 
     try:
         install_script.chmod(
@@ -659,16 +663,66 @@ def extract_linux_package(package_path):
     except OSError:
         pass
 
-    return destination, install_script
+    if gui_installer.is_file():
+        try:
+            gui_installer.chmod(
+                gui_installer.stat().st_mode
+                | 0o111
+            )
+        except OSError:
+            pass
+    else:
+        gui_installer = None
+
+    return (
+        destination,
+        install_script,
+        gui_installer,
+    )
 
 
 def launch_linux_installer(package_path):
-    extraction_root, install_script = (
-        extract_linux_package(
-            package_path
-        )
+    (
+        extraction_root,
+        install_script,
+        gui_installer,
+    ) = extract_linux_package(
+        package_path
     )
 
+    # New Linux packages contain a graphical installer. Launch it directly
+    # so updates have the same visible installer experience as Windows.
+    if (
+        gui_installer is not None
+        and (
+            os.environ.get(
+                "DISPLAY"
+            )
+            or os.environ.get(
+                "WAYLAND_DISPLAY"
+            )
+        )
+    ):
+        subprocess.Popen(
+            [
+                str(gui_installer),
+                "--update",
+                "--update-temp",
+                str(extraction_root),
+            ],
+            cwd=str(
+                gui_installer.parent
+            ),
+            env=os.environ.copy(),
+            start_new_session=True,
+            close_fds=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        return
+
+    # Headless/older-package fallback.
     environment = os.environ.copy()
     environment[
         "UWUCONVERTER_UPDATE_TEMP"

@@ -2,16 +2,50 @@
 set -euo pipefail
 
 UPDATE_MODE=0
+FROM_GUI=0
+SKIP_BROWSER_QUESTIONS=0
+INSTALL_CLI=1
+INSTALL_UPDATER=1
 
 for argument in "$@"; do
     case "$argument" in
         --update)
             UPDATE_MODE=1
             ;;
+        --from-gui)
+            FROM_GUI=1
+            ;;
+        --skip-browser-questions)
+            SKIP_BROWSER_QUESTIONS=1
+            ;;
+        --no-cli)
+            INSTALL_CLI=0
+            ;;
+        --no-updater)
+            INSTALL_UPDATER=0
+            ;;
     esac
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Compatibility bridge for users updating from an older UwUConverter updater.
+# Older updater builds launch "install.sh --update" directly. New release
+# packages redirect that call into the graphical installer when a desktop
+# session is available, so even the first update to this installer-enabled
+# version can show the GUI.
+if [ "$UPDATE_MODE" -eq 1 ] &&    [ "$FROM_GUI" -eq 0 ] &&    [ -x "$SCRIPT_DIR/UwUConverterInstaller" ] &&    [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    INSTALLER_ARGS=(--update)
+
+    if [ -n "${UWUCONVERTER_UPDATE_TEMP:-}" ]; then
+        INSTALLER_ARGS+=(
+            --update-temp
+            "$UWUCONVERTER_UPDATE_TEMP"
+        )
+    fi
+
+    exec "$SCRIPT_DIR/UwUConverterInstaller" "${INSTALLER_ARGS[@]}"
+fi
 APP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/UwUConverter"
 BIN_DIR="$HOME/.local/bin"
 AUTOSTART_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
@@ -23,17 +57,25 @@ mkdir -p "$AUTOSTART_DIR"
 
 # Copy the packaged application folder into a stable user location.
 # cp -a intentionally overlays the previous install during an update.
-cp -a "$SCRIPT_DIR/." "$APP_DIR/"
+# Skip the copy when install.sh is already running from the installed folder.
+if [ "$SCRIPT_DIR" != "$APP_DIR" ]; then
+    cp -a "$SCRIPT_DIR/." "$APP_DIR/"
+fi
 
 chmod +x "$APP_DIR/UwUConverterGUI" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterBatch" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterUpdater" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterBrowserHost" 2>/dev/null || true
+chmod +x "$APP_DIR/UwUConverterInstaller" 2>/dev/null || true
 chmod +x "$APP_DIR/cli/UwUConverter" 2>/dev/null || true
 
-ln -sfn "$APP_DIR/cli/UwUConverter" "$BIN_DIR/UwUConverter"
+if [ "$INSTALL_CLI" -eq 1 ]; then
+    ln -sfn "$APP_DIR/cli/UwUConverter" "$BIN_DIR/UwUConverter"
+else
+    rm -f "$BIN_DIR/UwUConverter"
+fi
 
-if [ -x "$APP_DIR/UwUConverterUpdater" ]; then
+if [ "$INSTALL_UPDATER" -eq 1 ] && [ -x "$APP_DIR/UwUConverterUpdater" ]; then
     ESCAPED_UPDATER=${APP_DIR//\\/\\\\}
     ESCAPED_UPDATER=${ESCAPED_UPDATER//\"/\\\"}
 
@@ -47,6 +89,8 @@ Terminal=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
 EOF
+else
+    rm -f "$AUTOSTART_FILE"
 fi
 
 first_command() {
@@ -161,13 +205,13 @@ offer_browser_integrations() {
 
 # Browser questions are part of the initial Linux installer itself.
 # Updates skip them so users are not asked again on every update.
-if [ "$UPDATE_MODE" -eq 0 ]; then
+if [ "$UPDATE_MODE" -eq 0 ] && [ "$SKIP_BROWSER_QUESTIONS" -eq 0 ]; then
     offer_browser_integrations
 fi
 
 # A fresh install gets an initial non-blocking update check. During an
 # update this would only re-check the release that was just installed.
-if [ "$UPDATE_MODE" -eq 0 ] && [ -x "$APP_DIR/UwUConverterUpdater" ]; then
+if [ "$UPDATE_MODE" -eq 0 ] &&    [ "$INSTALL_UPDATER" -eq 1 ] &&    [ -x "$APP_DIR/UwUConverterUpdater" ]; then
     "$APP_DIR/UwUConverterUpdater" --auto >/dev/null 2>&1 &
 fi
 
