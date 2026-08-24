@@ -3,83 +3,74 @@ name: Build Linux
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    tags:
-      - "v*"
-  pull_request:
-    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   build-linux:
-    runs-on: ubuntu-22.04
+    name: Build Linux x86_64
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout
+      - name: Check out source
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: "pip"
 
-      - name: Install system dependencies
+      - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             python3-tk             libgl1             libglib2.0-0             libsm6             libxext6             libxrender1
-
-      - name: Install Python dependencies
-        run: |
+          sudo apt-get install -y python3-tk tk-dev
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-          python -m pip install pyinstaller
 
-      - name: Clean old build folders
-        run: rm -rf build dist dist-cli
-
-      - name: Build main GUI
+      - name: Build complete Linux package
+        shell: bash
         run: |
-          python -m PyInstaller             --clean             --noconfirm             --onedir             --windowed             --name UwUConverterGUI             --add-data "UwUConverter.ico:."             Converter.py
+          chmod +x ./build_linux.sh
+          ./build_linux.sh
 
-      - name: Build batch GUI
+      - name: Verify packaged Linux release
+        shell: bash
         run: |
-          python -m PyInstaller             --clean             --noconfirm             --onefile             --windowed             --name UwUConverterBatch             BatchLauncher.py
+          set -euo pipefail
 
-      - name: Build CLI
-        run: |
-          python -m PyInstaller             --clean             --noconfirm             --onefile             --name UwUConverter             --distpath dist-cli             cli.py
+          PACKAGE_DIR="dist/UwUConverterGUI"
 
-      - name: Assemble Linux package
-        run: |
-          mkdir -p dist/UwUConverterGUI/cli
-          cp dist/UwUConverterBatch dist/UwUConverterGUI/UwUConverterBatch
-          cp dist-cli/UwUConverter dist/UwUConverterGUI/cli/UwUConverter
-          cp install_linux.sh dist/UwUConverterGUI/install.sh
-          cp uninstall_linux.sh dist/UwUConverterGUI/uninstall.sh
+          test -x "$PACKAGE_DIR/UwUConverterGUI"
+          test -x "$PACKAGE_DIR/UwUConverterBatch"
+          test -x "$PACKAGE_DIR/UwUConverterUpdater"
+          test -x "$PACKAGE_DIR/UwUConverterBrowserHost"
+          test -x "$PACKAGE_DIR/UwUConverterInstaller"
+          test -x "$PACKAGE_DIR/cli/UwUConverter"
+          test -x "$PACKAGE_DIR/install.sh"
+          test -x "$PACKAGE_DIR/uninstall.sh"
 
-          chmod +x dist/UwUConverterGUI/UwUConverterGUI
-          chmod +x dist/UwUConverterGUI/UwUConverterBatch
-          chmod +x dist/UwUConverterGUI/cli/UwUConverter
-          chmod +x dist/UwUConverterGUI/install.sh
-          chmod +x dist/UwUConverterGUI/uninstall.sh
+          test -d "$PACKAGE_DIR/browser-extension/chromium"
+          test -d "$PACKAGE_DIR/browser-extension/firefox"
 
-      - name: Verify build
-        run: |
-          test -x dist/UwUConverterGUI/UwUConverterGUI
-          test -x dist/UwUConverterGUI/UwUConverterBatch
-          test -x dist/UwUConverterGUI/cli/UwUConverter
+          test -f "dist/UwUConverter-linux-x86_64.tar.gz"
 
-          dist/UwUConverterGUI/cli/UwUConverter --version
-          dist/UwUConverterGUI/cli/UwUConverter --help
+          echo
+          echo "Linux package contents:"
+          find "$PACKAGE_DIR" -maxdepth 2 -type f -printf '%P\n' | sort
 
-      - name: Create tar.gz
-        run: |
-          cd dist
-          tar -czf UwUConverter-Linux-x64.tar.gz UwUConverterGUI
+          echo
+          echo "Release archive contents:"
+          tar -tzf "dist/UwUConverter-linux-x86_64.tar.gz" | sort
 
-      - name: Upload Linux package
+          if ! tar -tzf "dist/UwUConverter-linux-x86_64.tar.gz" \
+            | grep -q '^UwUConverterGUI/UwUConverterInstaller$'; then
+            echo "ERROR: UwUConverterInstaller is missing from the release archive."
+            exit 1
+          fi
+
+      - name: Upload Linux release
         uses: actions/upload-artifact@v4
         with:
-          name: UwUConverter-Linux-x64
-          path: dist/UwUConverter-Linux-x64.tar.gz
+          name: UwUConverter-linux-x86_64
+          path: dist/UwUConverter-linux-x86_64.tar.gz
           if-no-files-found: error
