@@ -413,13 +413,21 @@ def _install_7zip_linux():
         )
 
 
-def run_7zip(arguments):
+def run_7zip(
+    arguments,
+    cwd=None,
+):
     executable = find_7zip()
 
     process = subprocess.run(
         [str(executable), *arguments],
         check=False,
         env=_clean_subprocess_environment(),
+        cwd=(
+            str(cwd)
+            if cwd is not None
+            else None
+        ),
     )
 
     if process.returncode != 0:
@@ -439,6 +447,7 @@ def create_archive(
     password=None,
     encrypt_headers=False,
     force=False,
+    working_directory=None,
 ):
     archive = pathlib.Path(archive_path).expanduser().resolve()
 
@@ -518,9 +527,53 @@ def create_archive(
         if encrypt_headers and archive_format == "7z":
             arguments.append("-mhe=on")
 
-    arguments.extend(str(item) for item in inputs)
+    working_path = None
 
-    run_7zip(arguments)
+    if working_directory is not None:
+        working_path = (
+            pathlib.Path(
+                working_directory
+            )
+            .expanduser()
+            .resolve()
+        )
+
+        if not working_path.is_dir():
+            raise NotADirectoryError(
+                "Archive working directory does not exist: "
+                + str(working_path)
+            )
+
+    if working_path is not None:
+        input_arguments = []
+
+        for item in inputs:
+            try:
+                input_arguments.append(
+                    str(
+                        item.relative_to(
+                            working_path
+                        )
+                    )
+                )
+            except ValueError:
+                input_arguments.append(
+                    str(item)
+                )
+
+        arguments.extend(
+            input_arguments
+        )
+    else:
+        arguments.extend(
+            str(item)
+            for item in inputs
+        )
+
+    run_7zip(
+        arguments,
+        cwd=working_path,
+    )
 
     if not archive.is_file() or archive.stat().st_size <= 0:
         raise RuntimeError("7-Zip did not create a valid archive.")

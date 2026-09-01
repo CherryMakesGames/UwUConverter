@@ -86,6 +86,123 @@ def IsActionSupportedForFile(
     )
 
 
+def CreateZipFromSelection(
+    file_paths,
+):
+    from tkinter import filedialog
+
+    from archive_manager import create_archive
+
+    inputs = [
+        pathlib.Path(path)
+        .expanduser()
+        .resolve()
+        for path in file_paths
+    ]
+
+    if not inputs:
+        raise ValueError(
+            "Select at least one file or folder to compress."
+        )
+
+    missing = [
+        str(path)
+        for path in inputs
+        if not path.exists()
+    ]
+
+    if missing:
+        raise FileNotFoundError(
+            "Selected item no longer exists: "
+            + missing[0]
+        )
+
+    first_parent = inputs[0].parent
+    same_parent = all(
+        path.parent == first_parent
+        for path in inputs
+    )
+
+    if len(inputs) == 1:
+        default_name = (
+            inputs[0].name
+            + ".zip"
+        )
+    else:
+        default_name = "Archive.zip"
+
+    output_text = filedialog.asksaveasfilename(
+        title="Compress selection to ZIP",
+        initialdir=str(first_parent),
+        initialfile=default_name,
+        defaultextension=".zip",
+        filetypes=[
+            (
+                "ZIP archive",
+                "*.zip",
+            ),
+        ],
+    )
+
+    if not output_text:
+        return None
+
+    output = (
+        pathlib.Path(output_text)
+        .expanduser()
+        .resolve()
+    )
+
+    if output.suffix.lower() != ".zip":
+        output = pathlib.Path(
+            str(output)
+            + ".zip"
+        )
+
+    if output in inputs:
+        raise ValueError(
+            "The ZIP output cannot overwrite one of the selected inputs."
+        )
+
+    replace_existing = False
+
+    if output.exists():
+        replace_existing = messagebox.askyesno(
+            "Replace existing ZIP?",
+            (
+                str(output)
+                + "\n\n"
+                + "already exists. Replace it?"
+            ),
+        )
+
+        if not replace_existing:
+            return None
+
+    created = create_archive(
+        output,
+        inputs,
+        archive_format="zip",
+        level=5,
+        force=replace_existing,
+        working_directory=(
+            first_parent
+            if same_parent
+            else None
+        ),
+    )
+
+    messagebox.showinfo(
+        "UwUConverter",
+        (
+            "ZIP archive created:\n\n"
+            + str(created)
+        ),
+    )
+
+    return created
+
+
 def ConvertFiles(
     file_paths,
     convert_type
@@ -167,21 +284,6 @@ def ConvertFile(file_path, convert_type):
             file_path,
             action
         )
-        return
-
-    # Windows Explorer can invoke a legacy multi-select verb once for
-    # each selected file. The verb itself may have come from another
-    # selected file type, e.g. "Convert To JPEG" from a PNG while an
-    # OPUS file is also selected.
-    #
-    # Silently ignore files that do not support the chosen action.
-    # This is the same behavior used by ConvertFiles() for mixed
-    # selections and prevents unrelated files from reaching the
-    # conversion router and raising "Unknown conversion type".
-    if not IsActionSupportedForFile(
-        file_path,
-        convert_type
-    ):
         return
 
     input_extension = (
@@ -371,10 +473,18 @@ if __name__ == "__main__":
             len(sys.argv) > 3
             and sys.argv[1] == "__MULTI__"
         ):
-            ConvertFiles(
-                sys.argv[3:],
-                sys.argv[2]
-            )
+            if (
+                sys.argv[2].lower()
+                == "archive_create_zip_prompt"
+            ):
+                CreateZipFromSelection(
+                    sys.argv[3:]
+                )
+            else:
+                ConvertFiles(
+                    sys.argv[3:],
+                    sys.argv[2]
+                )
 
         elif len(sys.argv) > 2:
             ConvertFile(

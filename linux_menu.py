@@ -172,6 +172,19 @@ def CreateExtensions(file_types):
 
         make_executable(launcher)
 
+        zip_launcher = app_folder / (
+            "Compress Selection to ZIP With UwUConverter"
+        )
+
+        zip_launcher.write_text(
+            build_zip_selection_script(),
+            encoding="utf-8"
+        )
+
+        make_executable(
+            zip_launcher
+        )
+
         print(
             f"Installed {manager} batch GUI launcher: "
             f"{launcher}"
@@ -180,6 +193,7 @@ def CreateExtensions(file_types):
     create_dolphin_batch_gui_menu()
     create_dolphin_file_menus(file_types)
     create_dolphin_archive_menu()
+    create_dolphin_zip_selection_menu()
 
     print(
         "Installed Dolphin UwUConverter menus: "
@@ -430,6 +444,50 @@ def create_dolphin_file_menus(file_types):
 
 
 
+def create_dolphin_zip_selection_menu():
+    DOLPHIN_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    path = (
+        DOLPHIN_FOLDER
+        / "uwuconverter-compress-selection-zip.desktop"
+    )
+
+    command = " ".join(
+        shlex.quote(part)
+        for part in multi_file_command(
+            "ARCHIVE_CREATE_ZIP_PROMPT"
+        )
+    )
+
+    content = "\n".join(
+        [
+            "[Desktop Entry]",
+            "Type=Service",
+            "MimeType=application/octet-stream;inode/directory;",
+            "Actions=uwuCompressSelectionZip;",
+            "X-KDE-Priority=TopLevel",
+            "",
+            "[Desktop Action uwuCompressSelectionZip]",
+            "Name=Compress Selection to ZIP With UwUConverter",
+            "Icon=archive-insert",
+            "Exec=" + command + " %F",
+            "",
+        ]
+    )
+
+    path.write_text(
+        content,
+        encoding="utf-8"
+    )
+
+    make_executable(
+        path
+    )
+
+
 def create_dolphin_archive_menu():
     DOLPHIN_FOLDER.mkdir(
         parents=True,
@@ -622,6 +680,44 @@ def multi_file_command(convert_type):
         convert_type,
     ]
 
+
+
+def build_zip_selection_script():
+    command = " ".join(
+        shlex.quote(part)
+        for part in multi_file_command(
+            "ARCHIVE_CREATE_ZIP_PROMPT"
+        )
+    )
+
+    return (
+        "#!/usr/bin/env bash\n"
+        "set -u\n"
+        "paths=()\n"
+        "\n"
+        "if [ \"$#\" -gt 0 ]; then\n"
+        "    paths=(\"$@\")\n"
+        "else\n"
+        "    selected=\"${NAUTILUS_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    if [ -z \"$selected\" ]; then\n"
+        "        selected=\"${NEMO_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    fi\n"
+        "    if [ -z \"$selected\" ]; then\n"
+        "        selected=\"${CAJA_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    fi\n"
+        "\n"
+        "    while IFS= read -r selected_path; do\n"
+        "        if [ -n \"$selected_path\" ]; then\n"
+        "            paths+=(\"$selected_path\")\n"
+        "        fi\n"
+        "    done <<< \"$selected\"\n"
+        "fi\n"
+        "\n"
+        "if [ \"${#paths[@]}\" -gt 0 ]; then\n"
+        f"    {command} \"${{paths[@]}}\" "
+        ">/dev/null 2>&1 &\n"
+        "fi\n"
+    )
 
 
 def build_folder_gui_script():

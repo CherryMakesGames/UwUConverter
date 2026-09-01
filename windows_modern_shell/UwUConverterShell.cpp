@@ -196,10 +196,23 @@ HRESULT ReadSelection(IShellItemArray* items, std::vector<SelectedItem>& output)
     return output.empty() ? E_FAIL : S_OK;
 }
 
+bool IsZipSelectionAction(
+    const UwUActionDefinition& action
+) {
+    return _wcsicmp(
+        action.action,
+        L"ARCHIVE_CREATE_ZIP_PROMPT"
+    ) == 0;
+}
+
 bool ActionApplies(
     const UwUActionDefinition& action,
     const std::vector<SelectedItem>& selection
 ) {
+    if (IsZipSelectionAction(action)) {
+        return !selection.empty();
+    }
+
     if (action.folderOnly) {
         return selection.size() == 1 && selection[0].isFolder;
     }
@@ -218,6 +231,16 @@ std::vector<std::wstring> PathsForAction(
     const std::vector<SelectedItem>& selection
 ) {
     std::vector<std::wstring> paths;
+
+    if (IsZipSelectionAction(action)) {
+        for (const auto& item : selection) {
+            paths.push_back(
+                item.path
+            );
+        }
+
+        return paths;
+    }
 
     if (action.folderOnly) {
         if (selection.size() == 1 && selection[0].isFolder) {

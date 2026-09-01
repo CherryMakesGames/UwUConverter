@@ -154,6 +154,10 @@ def main() -> None:
 
     lines.extend(
         [
+            (
+                '    {L"Archive - Compress Selection to ZIP...", '
+                'L"ARCHIVE_CREATE_ZIP_PROMPT", L"", false},'
+            ),
             '    {L"Batch Convert Folder...", L"BATCH_UI_ALL", L"", true},',
             "};",
             "",
@@ -165,7 +169,7 @@ def main() -> None:
 
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
     print(OUTPUT)
-    print(f"Generated {len(rows) + 1} modern context-menu actions.")
+    print(f"Generated {len(rows) + 2} modern context-menu actions.")
 
 
 if __name__ == "__main__":

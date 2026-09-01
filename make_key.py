@@ -21,6 +21,11 @@ FOLDER_MENU_PATH = (
 
 ARCHIVE_MENU_NAME = "UwUConverterExtract"
 
+ZIP_SELECTION_MENU_PATH = (
+    "Software\\Classes\\AllFilesystemObjects"
+    "\\shell\\UwUConverterZipSelection"
+)
+
 ARCHIVE_EXTENSIONS = {
     ".7z", ".zip", ".rar", ".tar", ".gz", ".gzip",
     ".bz2", ".bzip2", ".xz", ".wim", ".cab", ".iso",
@@ -119,6 +124,9 @@ def CreateExtensions(file_types):
     ResetArchiveMenus()
     AddArchiveMenus()
 
+    ResetZipSelectionMenu()
+    AddZipSelectionMenu()
+
 
 def DeleteTree(root, key_path):
     try:
@@ -178,6 +186,13 @@ def ResetArchiveMenus():
         )
 
 
+def ResetZipSelectionMenu():
+    DeleteTree(
+        reg.HKEY_CURRENT_USER,
+        ZIP_SELECTION_MENU_PATH
+    )
+
+
 def command_string(convert_type):
     if is_packaged:
         if convert_type == "BATCH_UI_ALL":
@@ -223,6 +238,51 @@ def command_string(convert_type):
         f'"%1" '
         f'"{convert_type}"'
     )
+
+
+def multi_command_string(
+    convert_type,
+):
+    if is_packaged:
+        return (
+            f'"{sys.executable}" '
+            f'"__MULTI__" '
+            f'"{convert_type}" '
+            f'%*'
+        )
+
+    pythonw_exe = FindPythonw()
+    converter_script = os.path.join(
+        cwd,
+        "Converter.py"
+    )
+
+    return (
+        f'"{pythonw_exe}" '
+        f'"{converter_script}" '
+        f'"__MULTI__" '
+        f'"{convert_type}" '
+        f'%*'
+    )
+
+
+def CreateMultiCommand(
+    command_path,
+    convert_type,
+):
+    with reg.CreateKey(
+        reg.HKEY_CURRENT_USER,
+        command_path
+    ) as command_key:
+        reg.SetValueEx(
+            command_key,
+            "",
+            0,
+            reg.REG_SZ,
+            multi_command_string(
+                convert_type
+            )
+        )
 
 
 def CreateCommand(command_path, convert_type):
@@ -373,6 +433,40 @@ def AddFolderMenu():
     )
 
 
+def AddZipSelectionMenu():
+    with reg.CreateKey(
+        reg.HKEY_CURRENT_USER,
+        ZIP_SELECTION_MENU_PATH
+    ) as key:
+        reg.SetValueEx(
+            key,
+            "MUIVerb",
+            0,
+            reg.REG_SZ,
+            "Compress Selection to ZIP With UwUConverter ^-^"
+        )
+        reg.SetValueEx(
+            key,
+            "Icon",
+            0,
+            reg.REG_SZ,
+            icon_value
+        )
+        reg.SetValueEx(
+            key,
+            "MultiSelectModel",
+            0,
+            reg.REG_SZ,
+            "Player"
+        )
+
+    CreateMultiCommand(
+        ZIP_SELECTION_MENU_PATH
+        + "\\command",
+        "ARCHIVE_CREATE_ZIP_PROMPT"
+    )
+
+
 def AddArchiveMenus():
     actions = [
         (
@@ -483,6 +577,7 @@ def RemoveExtensions(file_types):
 
     ResetFolderMenu()
     ResetArchiveMenus()
+    ResetZipSelectionMenu()
 
     if os.path.isfile(saved_icon):
         os.remove(saved_icon)
