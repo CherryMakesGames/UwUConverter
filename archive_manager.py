@@ -416,6 +416,7 @@ def _install_7zip_linux():
 def run_7zip(
     arguments,
     cwd=None,
+    capture_output=False,
 ):
     executable = find_7zip()
 
@@ -428,15 +429,48 @@ def run_7zip(
             if cwd is not None
             else None
         ),
+        stdout=(
+            subprocess.PIPE
+            if capture_output
+            else None
+        ),
+        stderr=(
+            subprocess.STDOUT
+            if capture_output
+            else None
+        ),
+        text=capture_output,
+        errors=(
+            "replace"
+            if capture_output
+            else None
+        ),
     )
 
     if process.returncode != 0:
-        raise RuntimeError(
+        error_text = (
+            process.stdout.strip()
+            if capture_output
+            and process.stdout
+            else ""
+        )
+
+        message = (
             "7-Zip failed with exit code "
             + str(process.returncode)
         )
 
-    return process.returncode
+        if error_text:
+            message += (
+                "\n\n"
+                + error_text
+            )
+
+        raise RuntimeError(
+            message
+        )
+
+    return process
 
 
 def create_archive(
@@ -640,7 +674,7 @@ def list_archive(archive_path):
 
     return run_7zip(
         ["l", str(archive)]
-    )
+    ).returncode
 
 
 def test_archive(archive_path, password=None):
@@ -662,9 +696,373 @@ def test_archive(archive_path, password=None):
     if password:
         arguments.append("-p" + password)
 
-    return run_7zip(arguments)
+    return run_7zip(
+        arguments
+    ).returncode
 
 
+
+
+def _validate_archive_for_reading(
+    archive_path,
+):
+    archive = (
+        pathlib.Path(
+            archive_path
+        )
+        .expanduser()
+        .resolve()
+    )
+
+    extension = (
+        archive.suffix
+        .lower()
+        .lstrip(".")
+    )
+
+    if (
+        extension
+        and extension
+        not in EXTRACT_FORMATS
+    ):
+        raise ValueError(
+            "Unsupported archive format."
+        )
+
+    if not archive.is_file():
+        raise FileNotFoundError(
+            "Archive does not exist: "
+            + str(archive)
+        )
+
+    return archive
+
+
+def _parse_7zip_slt(
+    output,
+):
+    entries = []
+    current = {}
+    in_entries = False
+
+    for raw_line in output.splitlines():
+        line = raw_line.rstrip()
+
+        if line.startswith(
+            "----------"
+        ):
+            in_entries = True
+            current = {}
+            continue
+
+        if not in_entries:
+            continue
+
+        if not line:
+            if (
+                current
+                and current.get("Path")
+            ):
+                entries.append(
+                    current
+                )
+
+            current = {}
+            continue
+
+        if " = " not in line:
+            continue
+
+        key, value = line.split(
+            " = ",
+            1,
+        )
+
+        current[key] = value
+
+    if (
+        current
+        and current.get("Path")
+    ):
+        entries.append(
+            current
+        )
+
+    result = []
+
+    for entry in entries:
+        path = (
+            entry.get(
+                "Path",
+                "",
+            )
+            .replace(
+                "\\\\",
+                "/",
+            )
+            .lstrip("/")
+        )
+
+        if not path:
+            continue
+
+        folder = (
+            entry.get("Folder") == "+"
+            or entry.get(
+                "Attributes",
+                "",
+            ).startswith("D")
+        )
+
+        def number(name):
+            try:
+                return int(
+                    entry.get(
+                        name,
+                        "0",
+                    )
+                    or 0
+                )
+            except ValueError:
+                return 0
+
+        result.append(
+            {
+                "path": path,
+                "folder": folder,
+                "size": number(
+                    "Size"
+                ),
+                "packed_size": number(
+                    "Packed Size"
+                ),
+                "modified": entry.get(
+                    "Modified",
+                    "",
+                ),
+                "crc": entry.get(
+                    "CRC",
+                    "",
+                ),
+                "method": entry.get(
+                    "Method",
+                    "",
+                ),
+                "encrypted": (
+                    entry.get(
+                        "Encrypted"
+                    )
+                    == "+"
+                ),
+            }
+        )
+
+    return result
+
+
+def list_archive_entries(
+    archive_path,
+):
+    archive = (
+        _validate_archive_for_reading(
+            archive_path
+        )
+    )
+
+    process = run_7zip(
+        [
+            "l",
+            "-slt",
+            str(archive),
+        ],
+        capture_output=True,
+    )
+
+    return _parse_7zip_slt(
+        process.stdout or ""
+    )
+
+
+def extract_archive_entries(
+    archive_path,
+    entry_paths,
+    output_dir,
+    password=None,
+    overwrite=True,
+):
+    archive = (
+        _validate_archive_for_reading(
+            archive_path
+        )
+    )
+
+    output = (
+        pathlib.Path(
+            output_dir
+        )
+        .expanduser()
+        .resolve()
+    )
+
+    output.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    entries = [
+        str(path)
+        for path in entry_paths
+        if str(path)
+    ]
+
+    if not entries:
+        return extract_archive(
+            archive,
+            output_dir=output,
+            password=password,
+            overwrite=overwrite,
+        )
+
+    arguments = [
+        "x",
+        str(archive),
+        *entries,
+        "-o" + str(output),
+        "-y" if overwrite else "-aos",
+    ]
+
+    if password:
+        arguments.append(
+            "-p" + password
+        )
+
+    run_7zip(
+        arguments
+    )
+
+    return output
+
+
+def delete_archive_entries(
+    archive_path,
+    entry_paths,
+):
+    archive = (
+        _validate_archive_for_reading(
+            archive_path
+        )
+    )
+
+    entries = [
+        str(path)
+        for path in entry_paths
+        if str(path)
+    ]
+
+    if not entries:
+        return archive
+
+    run_7zip(
+        [
+            "d",
+            str(archive),
+            *entries,
+            "-y",
+        ]
+    )
+
+    return archive
+
+
+def add_to_archive(
+    archive_path,
+    input_paths,
+    working_directory=None,
+):
+    archive = (
+        pathlib.Path(
+            archive_path
+        )
+        .expanduser()
+        .resolve()
+    )
+
+    inputs = [
+        pathlib.Path(path)
+        .expanduser()
+        .resolve()
+        for path in input_paths
+    ]
+
+    if not inputs:
+        raise ValueError(
+            "Select at least one file or folder to add."
+        )
+
+    missing = [
+        str(path)
+        for path in inputs
+        if not path.exists()
+    ]
+
+    if missing:
+        raise FileNotFoundError(
+            "Input does not exist: "
+            + missing[0]
+        )
+
+    archive.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    working_path = None
+
+    if working_directory is not None:
+        working_path = (
+            pathlib.Path(
+                working_directory
+            )
+            .expanduser()
+            .resolve()
+        )
+
+    arguments = [
+        "a",
+        str(archive),
+    ]
+
+    if working_path is not None:
+        for item in inputs:
+            try:
+                arguments.append(
+                    str(
+                        item.relative_to(
+                            working_path
+                        )
+                    )
+                )
+            except ValueError:
+                arguments.append(
+                    str(item)
+                )
+    else:
+        arguments.extend(
+            str(item)
+            for item in inputs
+        )
+
+    run_7zip(
+        arguments,
+        cwd=working_path,
+    )
+
+    if not archive.is_file():
+        raise RuntimeError(
+            "7-Zip did not create or update the archive."
+        )
+
+    return archive
 
 def extract_archive_with_options(
     archive_path,

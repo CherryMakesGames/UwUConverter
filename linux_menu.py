@@ -185,6 +185,19 @@ def CreateExtensions(file_types):
             zip_launcher
         )
 
+        archive_launcher = app_folder / (
+            "Open Archive in UwUConverter"
+        )
+
+        archive_launcher.write_text(
+            build_archive_open_script(),
+            encoding="utf-8"
+        )
+
+        make_executable(
+            archive_launcher
+        )
+
         print(
             f"Installed {manager} batch GUI launcher: "
             f"{launcher}"
@@ -505,6 +518,11 @@ def create_dolphin_archive_menu():
 
     actions = [
         (
+            "uwuArchiveOpen",
+            "Open Archive Manager",
+            "ARCHIVE_OPEN_UI",
+        ),
+        (
             "uwuExtractHere",
             "Extract Here",
             "ARCHIVE_EXTRACT_HERE",
@@ -537,7 +555,7 @@ def create_dolphin_archive_menu():
         )
         + ";",
         "X-KDE-Submenu="
-        "Extract With UwUConverter ^-^",
+        "Archive With UwUConverter ^-^",
         "X-KDE-Priority=TopLevel",
         "",
     ]
@@ -680,6 +698,44 @@ def multi_file_command(convert_type):
         convert_type,
     ]
 
+
+
+def build_archive_open_script():
+    command = " ".join(
+        shlex.quote(part)
+        for part in multi_file_command(
+            "ARCHIVE_OPEN_UI"
+        )
+    )
+
+    return (
+        "#!/usr/bin/env bash\n"
+        "set -u\n"
+        "paths=()\n"
+        "\n"
+        "if [ \"$#\" -gt 0 ]; then\n"
+        "    paths=(\"$@\")\n"
+        "else\n"
+        "    selected=\"${NAUTILUS_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    if [ -z \"$selected\" ]; then\n"
+        "        selected=\"${NEMO_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    fi\n"
+        "    if [ -z \"$selected\" ]; then\n"
+        "        selected=\"${CAJA_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    fi\n"
+        "\n"
+        "    while IFS= read -r selected_path; do\n"
+        "        if [ -n \"$selected_path\" ]; then\n"
+        "            paths+=(\"$selected_path\")\n"
+        "        fi\n"
+        "    done <<< \"$selected\"\n"
+        "fi\n"
+        "\n"
+        "if [ \"${#paths[@]}\" -gt 0 ]; then\n"
+        f"    {command} \"${{paths[0]}}\" "
+        ">/dev/null 2>&1 &\n"
+        "fi\n"
+    )
 
 
 def build_zip_selection_script():

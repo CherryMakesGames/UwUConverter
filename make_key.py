@@ -470,6 +470,11 @@ def AddZipSelectionMenu():
 def AddArchiveMenus():
     actions = [
         (
+            "00_open",
+            "Open Archive Manager",
+            "ARCHIVE_OPEN_UI"
+        ),
+        (
             "01_here",
             "Extract Here",
             "ARCHIVE_EXTRACT_HERE"
@@ -508,7 +513,7 @@ def AddArchiveMenus():
                 "MUIVerb",
                 0,
                 reg.REG_SZ,
-                "Extract With UwUConverter ^-^"
+                "Archive With UwUConverter ^-^"
             )
             reg.SetValueEx(
                 key,

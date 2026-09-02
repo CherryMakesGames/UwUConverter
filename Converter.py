@@ -6,6 +6,7 @@ from tkinter import messagebox
 import av
 
 import platform_menu
+from archive_ui import open_archive_manager
 from audio_converter import convert_audio
 from batch_converter import batch_convert_folder
 from batch_dialog import open_batch_dialog
@@ -68,8 +69,11 @@ def IsActionSupportedForFile(
     action = convert_type.lower()
 
     # Archive actions are generated separately from file_types.py.
-    if action.startswith(
-        "archive_extract_"
+    if (
+        action == "archive_open_ui"
+        or action.startswith(
+            "archive_extract_"
+        )
     ):
         return True
 
@@ -343,6 +347,13 @@ def ConvertFile(file_path, convert_type):
             file_path,
             output_base + suffix,
             output_format
+        )
+        return
+
+
+    if action == "archive_open_ui":
+        open_archive_manager(
+            file_path
         )
         return
 
