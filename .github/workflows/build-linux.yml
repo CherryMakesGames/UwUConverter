@@ -60,10 +60,16 @@ jobs:
 
           echo
           echo "Release archive contents:"
-          tar -tzf "dist/UwUConverter-linux-x86_64.tar.gz" | sort
 
-          if ! tar -tzf "dist/UwUConverter-linux-x86_64.tar.gz" \
-            | grep -q '^UwUConverterGUI/UwUConverterInstaller$'; then
+          ARCHIVE_LIST="$RUNNER_TEMP/uwuconverter-linux-archive-contents.txt"
+          tar -tzf "dist/UwUConverter-linux-x86_64.tar.gz" > "$ARCHIVE_LIST"
+          sort "$ARCHIVE_LIST"
+
+          # Do not pipe tar directly into grep -q while pipefail is enabled.
+          # grep -q exits as soon as it sees the match, which closes the pipe
+          # early and makes tar report a SIGPIPE/write error. That made a
+          # perfectly valid archive look like the installer was missing.
+          if ! grep -qx 'UwUConverterGUI/UwUConverterInstaller' "$ARCHIVE_LIST"; then
             echo "ERROR: UwUConverterInstaller is missing from the release archive."
             exit 1
           fi
