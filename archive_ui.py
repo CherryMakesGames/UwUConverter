@@ -125,6 +125,7 @@ class ArchiveManagerWindow:
         self.current_folder = ""
         self.password = None
         self.item_map = {}
+        self.icons = self._build_icons()
 
         self.path_var = tk.StringVar(
             value="No archive open"
@@ -158,6 +159,229 @@ class ArchiveManagerWindow:
             self.open_archive(
                 archive_path
             )
+
+    def _new_icon(self):
+        return tk.PhotoImage(
+            width=16,
+            height=16,
+        )
+
+    def _build_icons(self):
+        icons = {}
+
+        # Transparent base.
+        def icon():
+            return self._new_icon()
+
+        # Folder.
+        image = icon()
+        image.put("#D9A72E", to=(1, 5, 15, 14))
+        image.put("#F0C653", to=(2, 4, 7, 6))
+        image.put("#F5D56A", to=(2, 7, 14, 13))
+        image.put("#A97B18", to=(1, 13, 15, 14))
+        icons["folder"] = image
+
+        # Parent/up folder.
+        image = icon()
+        image.put("#D9A72E", to=(1, 5, 15, 14))
+        image.put("#F0C653", to=(2, 4, 7, 6))
+        image.put("#F5D56A", to=(2, 7, 14, 13))
+        image.put("#4B79D8", to=(7, 2, 9, 10))
+        image.put("#4B79D8", to=(5, 4, 11, 6))
+        icons["up"] = image
+
+        # Generic file.
+        image = icon()
+        image.put("#F8F8F8", to=(3, 1, 13, 15))
+        image.put("#B8B8B8", to=(3, 14, 13, 15))
+        image.put("#DADADA", to=(10, 1, 13, 4))
+        image.put("#A0A0A0", to=(10, 4, 13, 5))
+        icons["file"] = image
+
+        # Executable / application file.
+        image = icon()
+        image.put("#F8F8F8", to=(2, 1, 14, 15))
+        image.put("#DADADA", to=(11, 1, 14, 4))
+        image.put("#A0A0A0", to=(11, 4, 14, 5))
+        image.put("#E784B9", to=(4, 7, 12, 13))
+        image.put("#FFFFFF", to=(6, 8, 7, 10))
+        image.put("#FFFFFF", to=(9, 8, 10, 10))
+        image.put("#9A4E78", to=(6, 11, 10, 12))
+        icons["exe"] = image
+
+        # Archive.
+        image = icon()
+        image.put("#8B4D2D", to=(3, 2, 13, 15))
+        image.put("#C58A5C", to=(4, 3, 12, 14))
+        image.put("#F2D39D", to=(7, 3, 9, 14))
+        image.put("#6F3A22", to=(7, 5, 9, 6))
+        image.put("#6F3A22", to=(7, 8, 9, 9))
+        image.put("#6F3A22", to=(7, 11, 9, 12))
+        icons["archive"] = image
+
+        # Image.
+        image = icon()
+        image.put("#F5F5F5", to=(2, 2, 14, 14))
+        image.put("#8FD2F0", to=(3, 3, 13, 9))
+        image.put("#79B85A", to=(3, 9, 13, 13))
+        image.put("#FFD65A", to=(10, 4, 12, 6))
+        image.put("#4F8A43", to=(4, 8, 8, 13))
+        icons["image"] = image
+
+        # Audio.
+        image = icon()
+        image.put("#F5F5F5", to=(2, 2, 14, 14))
+        image.put("#7254C8", to=(8, 4, 10, 11))
+        image.put("#7254C8", to=(9, 4, 13, 6))
+        image.put("#7254C8", to=(5, 10, 9, 13))
+        icons["audio"] = image
+
+        # Video.
+        image = icon()
+        image.put("#303030", to=(2, 2, 14, 14))
+        image.put("#FFFFFF", to=(6, 5, 7, 11))
+        image.put("#FFFFFF", to=(7, 6, 9, 10))
+        image.put("#FFFFFF", to=(9, 7, 11, 9))
+        icons["video"] = image
+
+        # Text / document.
+        image = icon()
+        image.put("#F8F8F8", to=(3, 1, 13, 15))
+        image.put("#DADADA", to=(10, 1, 13, 4))
+        image.put("#6E8FC8", to=(5, 7, 11, 8))
+        image.put("#6E8FC8", to=(5, 9, 11, 10))
+        image.put("#6E8FC8", to=(5, 11, 10, 12))
+        icons["document"] = image
+
+        # Code/script.
+        image = icon()
+        image.put("#F8F8F8", to=(3, 1, 13, 15))
+        image.put("#DADADA", to=(10, 1, 13, 4))
+        image.put("#54A36B", to=(4, 7, 6, 9))
+        image.put("#54A36B", to=(6, 6, 7, 10))
+        image.put("#54A36B", to=(10, 7, 12, 9))
+        image.put("#54A36B", to=(9, 6, 10, 10))
+        icons["code"] = image
+
+        return icons
+
+    def _icon_for_entry(
+        self,
+        name,
+        entry,
+    ):
+        if entry.get("up"):
+            return self.icons["up"]
+
+        if entry.get("folder"):
+            return self.icons["folder"]
+
+        suffix = pathlib.PurePosixPath(
+            name
+        ).suffix.lower()
+
+        if suffix in {
+            ".exe",
+            ".com",
+            ".msi",
+            ".appimage",
+        }:
+            return self.icons["exe"]
+
+        if suffix in {
+            ".zip",
+            ".7z",
+            ".rar",
+            ".tar",
+            ".gz",
+            ".gzip",
+            ".bz2",
+            ".bzip2",
+            ".xz",
+            ".wim",
+            ".cab",
+            ".iso",
+            ".arj",
+            ".lzh",
+            ".lzma",
+            ".rpm",
+            ".dmg",
+            ".xar",
+        }:
+            return self.icons["archive"]
+
+        if suffix in {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".gif",
+            ".bmp",
+            ".ico",
+            ".tif",
+            ".tiff",
+            ".raw",
+        }:
+            return self.icons["image"]
+
+        if suffix in {
+            ".mp3",
+            ".wav",
+            ".flac",
+            ".ogg",
+            ".opus",
+            ".m4a",
+            ".aac",
+        }:
+            return self.icons["audio"]
+
+        if suffix in {
+            ".mp4",
+            ".mkv",
+            ".mov",
+            ".avi",
+            ".webm",
+            ".m4v",
+        }:
+            return self.icons["video"]
+
+        if suffix in {
+            ".txt",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".odt",
+            ".rtf",
+            ".csv",
+            ".tsv",
+            ".xls",
+            ".xlsx",
+            ".ods",
+        }:
+            return self.icons["document"]
+
+        if suffix in {
+            ".py",
+            ".js",
+            ".ts",
+            ".java",
+            ".cs",
+            ".cpp",
+            ".c",
+            ".h",
+            ".hpp",
+            ".json",
+            ".xml",
+            ".yml",
+            ".yaml",
+            ".md",
+            ".sh",
+            ".bat",
+            ".ps1",
+        }:
+            return self.icons["code"]
+
+        return self.icons["file"]
 
     def _set_window_icon(self):
         candidates = [
@@ -852,6 +1076,7 @@ class ArchiveManagerWindow:
                 "",
                 "end",
                 text="..",
+                image=self.icons["up"],
                 values=(
                     "",
                     "",
@@ -939,6 +1164,10 @@ class ArchiveManagerWindow:
                 "",
                 "end",
                 text=name,
+                image=self._icon_for_entry(
+                    name,
+                    entry,
+                ),
                 values=(
                     size_text,
                     packed_text,

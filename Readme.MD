@@ -4,38 +4,40 @@
 
 ![nya~](./Readme%20Images/banner.png)
 
-UwUConverter is a local file conversion and archive utility written in Python. It supports right-click conversion, graphical batch conversion, compression, archive management, an installable command-line interface, and automatic updates.
+UwUConverter is a local file conversion, compression, and archive utility written in Python. It is built around fast right-click actions, but also includes graphical batch conversion, a WinRAR-style archive manager, browser image conversion, an installable CLI, and automatic updates.
 
-The project currently supports Windows and experimental Linux integration.
+Windows is the primary platform. Linux support is available for KDE Dolphin, Nautilus, Nemo, and Caja and is still considered experimental.
 
 ## Features
 
-- Right-click file conversion
+- Windows 11 modern File Explorer context menu
+- Windows 10 / legacy Explorer fallback menu
+- KDE Dolphin, Nautilus, Nemo, and Caja integration
+- Multi-file right-click conversion
+- Multi-selection `Compress Selection to ZIP...`
 - Right-click folder batch conversion
-- Installable CLI command: `UwUConverter`
+- Graphical batch converter with progress and cancellation
+- WinRAR-style graphical archive manager
+- ZIP / 7Z / TAR / GZIP / BZIP2 / XZ / WIM archive creation
+- RAR, CAB, ISO, ARJ, LZH, LZMA, RPM, DMG, and XAR extraction support
+- Archive extraction, listing, integrity testing, adding, and deleting entries
 - Video conversion
 - Audio conversion
 - Audio extraction from video
 - Image conversion
 - Camera RAW input
+- TIFF / TIF support
 - Document conversion
 - Spreadsheet conversion
 - 3D model conversion
-- Video compression
 - Image compression
-- Safe batch replacement
-- Large-folder batch processing
-- 7-Zip-backed archive creation and extraction
-- Archive listing and integrity testing
-- Archive right-click extraction menus
-- Automatic 7-Zip installation/download when missing
-- Automatic application updates
-- Windows File Explorer integration
-- KDE Dolphin integration
-- Nautilus integration
-- Nemo integration
-- Caja integration
-- Windows GUI actions without console windows
+- Video compression
+- Installable CLI command: `UwUConverter`
+- Browser right-click image conversion for Chromium-family browsers and Firefox
+- Windows installer
+- Linux graphical installer
+- Automatic updates on Windows and Linux
+- Automatic 7-Zip setup when required
 - Optional batch logs
 - Built-in feature verification script
 
@@ -121,7 +123,7 @@ PDF
 
 RAW is input-only.
 
-TIF and TIFF are both supported as normal image inputs and outputs.
+TIF and TIFF are supported as normal image inputs and outputs.
 
 ## 3D Models
 
@@ -138,7 +140,7 @@ GLB
 
 OBJ and GLB can keep multiple scene objects. STL and PLY are exported as a single mesh, so multiple mesh objects are merged during conversion.
 
-Format capabilities differ, so materials, textures, hierarchy, animations, cameras, lights, and other scene data may be lost when converting to simpler formats such as STL or PLY.
+Materials, textures, hierarchy, animations, cameras, lights, and other scene data may be lost when converting to simpler formats.
 
 `.blend` conversion is not currently implemented.
 
@@ -191,27 +193,49 @@ CSV
 TSV
 ```
 
-XLSB and XLSM are currently input-only.
+XLSB and XLSM are input-only.
 
 Spreadsheet conversion focuses mainly on cell values. Complex workbook features such as VBA, charts, pivot tables, formatting, and conditional formatting may not survive conversion.
 
-# Right-Click Conversion
+# Windows File Explorer Integration
 
-## Windows
+## Windows 11 modern menu
 
-Right-click a supported file and select:
+On Windows 11, UwUConverter uses a native `IExplorerCommand` shell extension so the app appears directly in the modern File Explorer context menu.
+
+Example:
 
 ```text
-Convert With UwUConverter ^-^
+UwUConverter >
+    Image - Convert To WEBP
+    Image - Compress By 50%
+    Archive - Compress Selection to ZIP...
+    Archive - Open Archive Manager
+    ...
 ```
 
-The submenu exposes the conversions supported for that file type.
+The shell extension only handles menu integration and selected paths. Conversion itself still runs through the normal UwUConverter executable.
 
-Single-file GUI conversions launch without opening a Command Prompt window.
+Windows 11 uses the modern menu when registration succeeds. The old registry-based menu is not recreated at the same time, avoiding duplicate UwUConverter entries.
 
-Errors are shown in a message box instead.
+If modern registration fails, the classic menu remains available as a fallback.
 
-Windows context menus are stored under the current user's registry keys rather than requiring system-wide registration.
+## Windows 10 and classic fallback
+
+The classic right-click menu uses registry verbs under the current user and does not normally require administrator privileges.
+
+Depending on the file type, it exposes conversions, compression actions, archive actions, or the folder batch converter.
+
+# Linux File Manager Integration
+
+UwUConverter supports:
+
+```text
+KDE Dolphin
+Nautilus
+Nemo
+Caja
+```
 
 ## KDE Dolphin
 
@@ -221,11 +245,9 @@ Dolphin service menus are installed under:
 ~/.local/share/kio/servicemenus/
 ```
 
-UwUConverter creates service menus based on MIME types.
+UwUConverter generates MIME-aware conversion menus and also provides universal multi-selection actions where required.
 
-The installer cleans old UwUConverter service-menu entries before regenerating them to avoid stale or duplicate actions.
-
-After changing menu integration manually, refreshing KDE's service cache can help:
+After changing menu integration manually:
 
 ```bash
 kbuildsycoca6
@@ -233,11 +255,13 @@ dolphin --quit
 dolphin &
 ```
 
-## Multi-Select Conversion
+## Nautilus, Nemo, and Caja
+
+UwUConverter installs script-based actions for supported operations, including archive management and multi-selection ZIP creation.
+
+# Multi-Select Conversion
 
 UwUConverter supports converting multiple selected files from the right-click menu.
-
-On KDE Dolphin, one universal conversion service menu is registered for all supported conversion MIME types. This means mixed selections can still open the same `Convert With UwUConverter ^-^` submenu.
 
 Example selection:
 
@@ -247,13 +271,40 @@ image2.png
 video.mp4
 ```
 
-Choosing an image conversion converts the compatible image files and skips the video. Choosing a video or audio-extraction action processes the compatible video and skips the images.
+Choosing an image conversion processes compatible image files and skips incompatible files. Choosing a video action does the same for supported video files.
 
-Dolphin passes the full selection with `%F`, so the converter receives all selected paths in one invocation.
+Mixed selections are therefore safe to use with the same menu.
 
-On Windows, the generated Explorer verbs use the Windows multi-selection verb model so supported right-click actions remain available for multiple selected files.
+Archive extraction actions also support multiple selected archives.
 
-Archive extraction actions also support selecting multiple archives at once.
+# Compress Multiple Selected Items to ZIP
+
+Select one or more files or folders and choose:
+
+```text
+Compress Selection to ZIP...
+```
+
+One Save As dialog is shown for the entire selection.
+
+For multiple selected items, the default archive name is:
+
+```text
+Archive.zip
+```
+
+For one selected item, the default name is based on that item.
+
+When the selected items come from the same directory, UwUConverter passes relative names to 7-Zip so the archive contains normal paths instead of absolute filesystem paths.
+
+This action is available through:
+
+- Windows 11 modern File Explorer
+- Windows classic File Explorer fallback
+- KDE Dolphin
+- Nautilus
+- Nemo
+- Caja
 
 # Batch Converter
 
@@ -266,7 +317,7 @@ The batch GUI contains:
 - Output format selector
 - Folder scanning progress
 - Conversion progress bar
-- Converted/skipped/failed counters
+- Converted / skipped / failed counters
 - Current filename
 - Cancel button
 - Optional log checkbox
@@ -288,11 +339,7 @@ Spreadsheets
 
 ### Create a new folder
 
-This is the default mode.
-
 The converted folder is created beside the original folder.
-
-Example:
 
 ```text
 Pictures/
@@ -302,8 +349,6 @@ Pictures - Converted to WEBP/
 ### Place beside originals
 
 Converted files are saved in the same folder as the source files.
-
-Example:
 
 ```text
 Pictures/
@@ -317,7 +362,7 @@ Pictures/
 
 The source is removed only after the converted file has been created successfully and verified to be non-empty.
 
-Temporary files are created first and moved into place only after conversion succeeds.
+Temporary output is created first and moved into place only after conversion succeeds.
 
 Failed conversions leave the source untouched.
 
@@ -337,34 +382,61 @@ When enabled, UwUConverter creates:
 UwUConverter-batch-YYYYMMDD-HHMMSS.log
 ```
 
-The log includes:
-
-- skipped files
-- failed files
-- tracebacks
-- totals
-- elapsed time
+The log includes skipped files, failed files, tracebacks, totals, and elapsed time.
 
 ## Large Folder Support
 
-Batch conversion is designed to handle very large folders without keeping every path in memory.
+Batch conversion uses streamed directory scanning rather than loading every path into memory.
 
-The converter performs two streamed passes with `os.scandir()`:
-
-1. Count matching files for progress reporting.
-2. Convert matching files one at a time.
-
-This keeps memory usage relatively stable even with folders containing tens of thousands of files.
-
-Batch conversion is currently non-recursive.
+The current batch converter is non-recursive.
 
 # Archive Management
 
-UwUConverter includes a 7-Zip-backed archive manager.
+UwUConverter uses 7-Zip as its archive backend.
+
+## Graphical Archive Manager
+
+Supported archives can be opened in the UwUConverter Archive Manager from the right-click menu.
+
+The interface is intentionally similar to a classic WinRAR-style archive browser and includes:
+
+```text
+File   Commands   Tools   Help
+
+[ Add ] [ Extract To ] [ Test ] [ Delete ] [ Info ] [ Up ] [ Refresh ]
+```
+
+The archive list displays:
+
+```text
+Name
+Size
+Packed
+Type
+Modified
+CRC
+```
+
+The archive manager supports:
+
+- Opening an archive
+- Browsing folders inside an archive
+- Multi-selecting archive entries
+- Extracting selected entries
+- Extracting the whole archive
+- Adding files
+- Adding folders
+- Deleting selected entries when supported by the archive format
+- Testing archive integrity
+- Setting a password for encrypted extraction/testing
+- Archive information
+- Entry information
+- Double-clicking a file to extract it temporarily and open it
+- Creating new ZIP and 7Z archives
 
 ## Archive Creation
 
-Archive creation currently supports:
+Creation currently supports:
 
 ```text
 7Z
@@ -394,85 +466,68 @@ XAR
 
 RAR is extraction-only because 7-Zip does not create RAR archives.
 
+## Right-Click Archive Menu
+
+Supported archives expose actions such as:
+
+```text
+Open Archive Manager
+Extract Here
+Extract to Archive-Named Folder
+Extract Here and Delete Archive
+Extract to Archive-Named Folder and Delete Archive
+```
+
+The delete variants remove the source archive only after successful extraction.
+
 ## Archive CLI
 
-Create an archive:
+Create:
 
-```powershell
-UwUConverter archive create archive.7z ".\Folder"
-UwUConverter archive create archive.zip ".\Folder" --level 9
+```bash
+UwUConverter archive create archive.7z "./Folder"
+UwUConverter archive create archive.zip "./Folder" --level 9
 ```
 
-Create a password-protected 7Z archive:
+Password-protected 7Z:
 
-```powershell
-UwUConverter archive create private.7z ".\Folder" --password password123 --encrypt-headers
+```bash
+UwUConverter archive create private.7z "./Folder" --password password123 --encrypt-headers
 ```
 
-Extract into an archive-named folder:
+Extract:
 
-```powershell
+```bash
 UwUConverter archive extract archive.rar
-```
-
-Extract directly beside the archive:
-
-```powershell
 UwUConverter archive extract archive.rar --here
-```
-
-Delete the source archive only after successful extraction:
-
-```powershell
 UwUConverter archive extract archive.rar --delete-source
-UwUConverter archive extract archive.rar --here --delete-source
 ```
 
-List archive contents:
+List:
 
-```powershell
+```bash
 UwUConverter archive list archive.7z
 ```
 
-Test archive integrity:
+Test:
 
-```powershell
+```bash
 UwUConverter archive test archive.rar
 ```
 
-## Archive Right-Click Menu
-
-Supported archives get an extraction submenu.
-
-```text
-Extract With UwUConverter ^-^
-├── Extract Here
-├── Extract to Archive-Named Folder
-├── Extract Here and Delete Archive
-└── Extract to Archive-Named Folder and Delete Archive
-```
-
-The delete variants remove the source archive only after 7-Zip reports a successful extraction.
-
-This menu is implemented for Windows File Explorer and KDE Dolphin.
-
 ## Automatic 7-Zip Setup
 
-UwUConverter searches for existing 7-Zip installations first.
+UwUConverter first looks for an existing usable 7-Zip executable.
 
-On Windows it checks normal PATH and Program Files locations. If 7-Zip is missing, UwUConverter can download and install the Windows 7-Zip package automatically.
+On Windows it checks normal PATH and Program Files locations.
 
-On Linux it prefers a native `7zz` executable. If no usable 7-Zip command exists, UwUConverter can download a private copy into the user's UwUConverter data directory instead of requiring a system-wide installation.
-
-The Linux archive launcher cleans PyInstaller-specific library environment variables before starting external 7-Zip/system processes. This prevents bundled libraries from leaking into `/bin/sh` or distro tools.
+On Linux it prefers a native `7zz`. If one is unavailable, UwUConverter can keep a private copy in the user's application data instead of requiring a system-wide package.
 
 # Compression
 
 UwUConverter supports image and video compression.
 
-## GUI Compression Presets
-
-The right-click GUI exposes:
+## GUI Presets
 
 ```text
 Lossless Optimize
@@ -481,996 +536,320 @@ Compress By 50%
 Compress By 75%
 ```
 
-The percentage represents the requested file-size reduction.
+The percentage represents the requested reduction, not an exact guarantee.
 
-Example:
+## CLI
+
+```bash
+UwUConverter compress "./video.mp4" --percent 40
+UwUConverter compress "./image.webp" --percent 20
+```
+
+# Browser Integration
+
+UwUConverter includes browser extensions for Chromium-family browsers and Firefox.
+
+Supported Chromium-family targets include:
 
 ```text
-25% reduction -> target roughly 75% of original size
-50% reduction -> target roughly 50% of original size
-75% reduction -> target roughly 25% of original size
+Google Chrome
+Chromium
+Microsoft Edge
+Opera
+Opera GX
+Brave
+Vivaldi
 ```
 
-These are targets rather than exact guarantees.
+Firefox is supported separately.
 
-## CLI Compression
-
-The CLI accepts any integer from 1 to 99:
-
-```powershell
-UwUConverter compress ".\video.mp4" --percent 40
-UwUConverter compress ".\video.mp4" --percent 63
-UwUConverter compress ".\image.webp" --percent 20
-```
-
-Lossless:
-
-```powershell
-UwUConverter compress ".\video.mp4" --lossless
-UwUConverter compress ".\image.webp" --lossless
-```
-
-# Command-Line Interface
-
-UwUConverter installs a normal console command:
+Right-clicking an image in a supported browser exposes UwUConverter download/conversion actions such as:
 
 ```text
+Download as PNG
+Download as JPG
+Download as JPEG
+Download as WEBP
+Download as ICO
+Download as TIF
+Download as TIFF
+Download as PDF
+```
+
+The browser extension talks to the local `UwUConverterBrowserHost` through browser native messaging.
+
+Current browser installation is assisted rather than silently forced by the application. Browsers intentionally restrict silent extension installation for normal desktop applications.
+
+The installer detects supported browsers, lets the user choose which ones to set up, opens the browser extension-management page, and opens the bundled extension folder.
+
+The same Chromium extension package is used for Chrome, Chromium, Edge, Opera, Opera GX, Brave, and Vivaldi.
+
+# CLI
+
+The packaged CLI command is:
+
+```bash
 UwUConverter
 ```
 
-The CLI supports:
+Examples:
 
-- direct conversion
-- compression
-- batch conversion
-- archive operations
-- update checks
-- menu installation
-- menu removal
-- format listing
-- debug tracebacks
-
-## Help
-
-```powershell
+```bash
 UwUConverter --help
-UwUConverter --version
-UwUConverter formats
-```
-
-## Convert a File
-
-```powershell
-UwUConverter convert ".\photo.tif" --to webp
-UwUConverter convert ".\video.mkv" --to mp4
-UwUConverter convert ".\video.mp4" --to opus
-UwUConverter convert ".\report.pdf" --to docx
-UwUConverter convert ".\sheet.xlsx" --to csv
-UwUConverter convert ".\model.obj" --to glb
-```
-
-Short format flag:
-
-```powershell
-UwUConverter convert ".\photo.png" -t webp
-```
-
-Exact output path:
-
-```powershell
-UwUConverter convert ".\photo.tif" -t png -o ".\converted.png"
-```
-
-Output directory:
-
-```powershell
-UwUConverter convert ".\photo.tif" -t webp --output-dir ".\converted"
-```
-
-Add a suffix:
-
-```powershell
-UwUConverter convert ".\photo.tif" -t webp --suffix "_small"
-```
-
-Overwrite an existing output:
-
-```powershell
-UwUConverter convert ".\photo.tif" -t webp --force
-```
-
-Delete the source after successful conversion:
-
-```powershell
-UwUConverter convert ".\photo.tif" -t webp --delete-source
-```
-
-## CLI Batch Conversion
-
-Create a sibling output folder:
-
-```powershell
-UwUConverter batch ".\Pictures" -c image -t webp -m folder
-```
-
-Place outputs beside originals:
-
-```powershell
-UwUConverter batch ".\Pictures" -c image -t webp -m beside
-```
-
-Replace originals:
-
-```powershell
-UwUConverter batch ".\Pictures" -c image -t webp -m replace
-```
-
-Extract OPUS audio from matching videos:
-
-```powershell
-UwUConverter batch ".\Videos" -c video -t opus -m folder
-```
-
-Convert 3D models:
-
-```powershell
-UwUConverter batch ".\Models" -c model -t glb -m folder
-```
-
-Create a log:
-
-```powershell
-UwUConverter batch ".\Pictures" -c image -t webp --log
-```
-
-Quiet mode:
-
-```powershell
-UwUConverter batch ".\Pictures" -c image -t webp --quiet
-```
-
-## CLI Debug Mode
-
-By default, CLI failures print a concise error.
-
-For a traceback:
-
-```powershell
-UwUConverter --debug convert ".\broken.mkv" --to mp4
-```
-
-Ctrl+C exits with:
-
-```text
-Cancelled.
-```
-
-and exit code `130`.
-
-## CLI Startup
-
-Converters are loaded lazily.
-
-For example, an image or video command does not load the PDF conversion libraries at startup.
-
-This avoids unrelated PyMuPDF/`fitz` warnings and reduces unnecessary startup work.
-
-# Automatic Updates
-
-UwUConverter includes a separate updater executable on Windows and Linux.
-
-The updater checks the latest published GitHub Release for:
-
-```text
-CherryMakesGames/UwUConverter
-```
-
-Automatic checks are cached for 24 hours.
-
-## Update Commands
-
-Check for and offer to install an update:
-
-```bash
-UwUConverter update
-```
-
-Only check:
-
-```bash
+UwUConverter archive list archive.zip
+UwUConverter compress image.png --percent 50
 UwUConverter update --check-only
 ```
 
-Install without asking:
+# Installation
 
-```bash
-UwUConverter update --yes
-```
+## Windows
 
-## Windows Updater
-
-The Windows installer installs:
-
-```text
-UwUConverterUpdater.exe
-```
-
-and registers it in the current user's startup entries.
-
-The updater downloads the Windows installer asset from the latest release and starts Inno Setup after approval.
-
-The preferred release asset name is:
+Download and run:
 
 ```text
 UwUConverter-Setup.exe
 ```
 
-The updater can also recognize an `.exe` whose name contains `UwUConverter` and either `setup` or `installer`.
+The installer installs the main application, CLI, updater, browser native host, browser extension payloads, and File Explorer integrations.
 
-## Linux Updater
+The normal installation is per-user.
 
-The Linux build includes:
+On Windows 11, the installer also registers the modern context-menu shell package.
 
-```text
-UwUConverterUpdater
-```
+## Linux graphical installer
 
-The installer creates:
+Linux release archives contain:
 
 ```text
-~/.config/autostart/uwuconverter-updater.desktop
+UwUConverterInstaller
 ```
 
-The updater checks after desktop login while respecting the 24-hour check cache.
-
-Linux release assets are expected as:
-
-```text
-UwUConverter-linux-x86_64.tar.gz
-UwUConverter-linux-arm64.tar.gz
-```
-
-The updater selects the package matching the current machine architecture, downloads it, verifies the release asset SHA-256 digest when supplied, safely extracts it, and runs:
-
-```text
-install.sh --update
-```
-
-The updater uses a verified SSL context and searches common system CA certificate bundle locations. This is important for PyInstaller builds on distributions where Python/OpenSSL does not automatically discover the host CA store.
-
-Certificate verification is not disabled.
-
-## Versioning
-
-The application version is stored in:
-
-```text
-version.py
-```
-
-For a release, update `APP_VERSION`, keep `MyAppVersion` in `installer.iss` synchronized, and publish a newer release tag such as:
-
-```text
-v0.12
-```
-
-# Windows Installation
-
-The installer places UwUConverter under:
-
-```text
-%LOCALAPPDATA%\Programs\UwUConverter
-```
-
-The GUI executable is:
-
-```text
-%LOCALAPPDATA%\Programs\UwUConverter\UwUConverter.exe
-```
-
-The batch GUI executable is:
-
-```text
-%LOCALAPPDATA%\Programs\UwUConverter\UwUConverterBatch.exe
-```
-
-The updater executable is:
-
-```text
-%LOCALAPPDATA%\Programs\UwUConverter\UwUConverterUpdater.exe
-```
-
-The CLI executable is:
-
-```text
-%LOCALAPPDATA%\Programs\UwUConverter\cli\UwUConverter.exe
-```
-
-Only the `cli` directory is added to the current user's PATH.
-
-This means:
-
-```powershell
-UwUConverter
-```
-
-runs the CLI rather than the GUI.
-
-After installation, open a new PowerShell or Command Prompt window before testing the command because already-open terminals retain their previous PATH environment.
-
-Test:
-
-```powershell
-UwUConverter --version
-UwUConverter formats
-UwUConverter update --check-only
-```
-
-## PowerShell Current-Directory Behavior
-
-PowerShell does not automatically execute programs from the current directory by filename alone.
-
-When testing an unpacked executable directly from the current directory, use:
-
-```powershell
-.\UwUConverter.exe --help
-```
-
-not:
-
-```powershell
-UwUConverter.exe --help
-```
-
-Once installed and added to PATH, use:
-
-```powershell
-UwUConverter --help
-```
-
-from any directory.
-
-# Windows Build
-
-The project uses separate GUI, batch GUI, CLI, and updater executables.
-
-The GUI, batch GUI, and updater use the Windows GUI subsystem so they do not open terminal windows.
-
-The CLI intentionally uses the console subsystem.
-
-Build with:
-
-```text
-build_windows.bat
-```
-
-The final installation layout includes:
-
-```text
-UwUConverter/
-├── UwUConverter.exe
-├── UwUConverterBatch.exe
-├── UwUConverterUpdater.exe
-├── cli/
-│   └── UwUConverter.exe
-└── _internal/
-```
-
-Compile the installer with Inno Setup:
-
-```powershell
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer.iss"
-```
-
-The installer adds:
-
-```text
-%LOCALAPPDATA%\Programs\UwUConverter\cli
-```
-
-to the user's PATH.
-
-It removes that PATH entry during uninstall.
-
-# Linux Support
-
-Linux integration depends on the file manager.
-
-Current support:
-
-| File manager | Support |
-| --- | --- |
-| Dolphin | Yes |
-| Nautilus | Yes |
-| Nemo | Yes |
-| Caja | Yes |
-| Thunar | Not yet |
-| PCManFM / PCManFM-Qt | Not yet |
-
-Hyprland itself is not a file manager. UwUConverter works under Hyprland when paired with a supported file manager such as Dolphin.
-
-## Dolphin
-
-Dolphin gets individual-file conversion service menus, archive extraction actions, and a folder batch-conversion action.
-
-Service menus are installed under:
-
-```text
-~/.local/share/kio/servicemenus/
-```
-
-## Nautilus
-
-Scripts are installed under:
-
-```text
-~/.local/share/nautilus/scripts/UwUConverter/
-```
-
-## Nemo
-
-Scripts are installed under:
-
-```text
-~/.local/share/nemo/scripts/UwUConverter/
-```
-
-## Caja
-
-Scripts are installed under:
-
-```text
-~/.config/caja/scripts/UwUConverter/
-```
-
-## Linux Menu Cleanup
-
-Installation performs cleanup before recreating menu entries.
-
-This removes stale UwUConverter-generated integration files from previous versions.
-
-Manual cleanup:
+Run:
 
 ```bash
-python3 cleanup_linux_menus.py
+./UwUConverterInstaller
 ```
 
-Uninstall menu integration:
+The graphical installer can configure:
+
+- Application installation
+- CLI command
+- File-manager integration
+- Browser native-messaging support
+- Browser extension setup
+- Automatic updater
+
+## Linux terminal installer
+
+For terminal or headless installation:
 
 ```bash
-python3 Converter.py --uninstall
-```
-
-For Dolphin, check remaining entries with:
-
-```bash
-find ~/.local/share/kio/servicemenus \
-  -maxdepth 1 \
-  -iname '*uwuconverter*' \
-  -print
-```
-
-After uninstalling, this should return nothing.
-
-# Linux Installation
-
-The Linux installer stores the application under:
-
-```text
-~/.local/share/UwUConverter
-```
-
-and creates the CLI command:
-
-```text
-~/.local/bin/UwUConverter
-```
-
-It also installs the updater autostart entry.
-
-Install:
-
-```bash
-chmod +x install.sh
 ./install.sh
 ```
 
-Update an existing installation from an extracted release:
+The shell installer remains the backend used by the graphical installer.
 
-```bash
-./install.sh --update
+# Automatic Updates
+
+The updater checks the latest GitHub Release from:
+
+```text
+CherryMakesGames/UwUConverter
 ```
 
-If `~/.local/bin` is not already in PATH:
+Automatic checks are cached so normal startup/login does not repeatedly hit the GitHub API.
+
+## Windows updates
+
+The Windows updater downloads the normal setup executable and launches the full Inno Setup installer.
+
+Updates therefore use the same visible installer flow as a manual installation instead of silently replacing files.
+
+## Linux updates
+
+On a graphical Linux desktop, the updater downloads the matching release archive and opens `UwUConverterInstaller` in update mode.
+
+Headless Linux falls back to:
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
+install.sh --update
 ```
 
-Then:
+CLI update commands:
 
 ```bash
-UwUConverter --help
-UwUConverter convert "./photo.tif" --to webp
-UwUConverter batch "./Pictures" -c image -t webp
+UwUConverter update
 UwUConverter update --check-only
+UwUConverter update --yes
 ```
 
-# Linux Build
+# Building from Source
 
-Build with:
+## Python dependencies
+
+Install dependencies from:
+
+```text
+requirements.txt
+```
+
+or install the relevant Python packages manually.
+
+The project uses libraries including:
+
+```text
+PyAV
+Pillow
+rawpy
+pdf2docx
+openpyxl
+pandas
+trimesh
+PyInstaller
+```
+
+Some conversions also depend on external tools such as 7-Zip.
+
+## Windows build
+
+The Windows release uses:
+
+- PyInstaller
+- Inno Setup
+- A native C++ Windows 11 shell extension
+- A sparse MSIX package for modern File Explorer integration
+
+The GitHub Actions Windows workflow builds the main GUI, batch converter, CLI, updater, browser host, browser extension ZIPs, modern shell DLL/package, and final Inno Setup installer.
+
+## Linux build
+
+Run:
 
 ```bash
+chmod +x ./build_linux.sh
 ./build_linux.sh
 ```
 
-On Arch, CachyOS, and other PEP 668 distributions, the build script prefers the project's `.venv`.
-
-If no project venv exists, it creates an isolated build environment instead of trying to install packages into the system Python.
-
-The build produces:
+The resulting package contains:
 
 ```text
 UwUConverterGUI
 UwUConverterBatch
-UwUConverter
 UwUConverterUpdater
+UwUConverterBrowserHost
+UwUConverterInstaller
+cli/UwUConverter
+browser-extension/
+install.sh
+uninstall.sh
 ```
 
-and a release archive named according to the current architecture, for example:
+The GitHub Actions Linux workflow verifies the package contents and final tar archive before uploading the artifact.
 
-```text
-dist/UwUConverter-linux-x86_64.tar.gz
-```
+# Development Notes
 
-## Linux Build Size
+## Updating File Manager Menus
 
-The Linux package can currently be large.
+After changing supported file types or menu actions, regenerate the integration by running the application normally or reinstalling the current build.
 
-A build around several hundred megabytes is possible because PyInstaller may bundle large Python and native dependencies such as:
+Windows Explorer and KDE may cache menu registrations.
 
-- Python runtime
-- PyAV and FFmpeg libraries
-- Pillow
-- rawpy and LibRaw
-- pandas
-- NumPy
-- openpyxl
-- xlrd
-- xlwt
-- pyxlsb
-- reportlab
-- pdf2docx
-- PyMuPDF
-- python-docx
-- odfpy
-- Tcl/Tk
-- trimesh
-
-Another major source of size is duplicate dependency bundles when the GUI, batch GUI, CLI, and updater are built independently.
-
-Future packaging optimization should move toward a shared `onedir` dependency bundle so large libraries are stored once rather than duplicated between launchers.
-
-The current priority is functionality and compatibility rather than minimum package size.
-
-To inspect the largest files:
-
-```bash
-du -ah dist/UwUConverterGUI | sort -h | tail -40
-```
-
-To compare top-level build sizes:
-
-```bash
-du -sh dist/*
-```
-
-# Running From Source
-
-Install dependencies in a virtual environment:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-Fish shell:
-
-```fish
-python3 -m venv .venv
-source .venv/bin/activate.fish
-pip install -r requirements.txt
-```
-
-## Windows
-
-Install or refresh menus:
+Windows Explorer can be restarted with:
 
 ```powershell
-python .\Converter.py
+taskkill /f /im explorer.exe
+start explorer.exe
 ```
 
-Run CLI:
-
-```powershell
-python .\cli.py --help
-```
-
-Open batch GUI directly:
-
-```powershell
-pythonw .\BatchLauncher.py ".\Pictures"
-```
-
-Uninstall menu integration:
-
-```powershell
-python .\Converter.py --uninstall
-```
-
-## Linux
-
-Install Tkinter if required.
-
-Arch / CachyOS:
+KDE:
 
 ```bash
-sudo pacman -S tk
-```
-
-Ubuntu / Debian:
-
-```bash
-sudo apt install python3-tk
-```
-
-Fedora:
-
-```bash
-sudo dnf install python3-tkinter
-```
-
-Install or refresh integrations:
-
-```bash
-python3 Converter.py
-```
-
-Run CLI:
-
-```bash
-python3 cli.py --help
-```
-
-Open batch GUI:
-
-```bash
-python3 BatchLauncher.py "./Pictures"
-```
-
-Run the feature verifier:
-
-```bash
-python3 verify_features.py
-```
-
-# Feature Verification
-
-The project includes:
-
-```text
-verify_features.py
-```
-
-It performs broad automated verification of conversion routing, archive handling, menus, batch modes, updater logic, Linux installation, and available converter backends.
-
-The current verification run in the available Linux test environment reported:
-
-```text
-19 passed
-1 skipped
-0 failed
-```
-
-Runtime-tested successfully included:
-
-- Python source syntax
-- Linux shell-script syntax
-- CLI parsing
-- CLI format listing
-- update-version comparison
-- Windows/Linux release asset selection logic
-- Linux update package extraction
-- Linux updater install/autostart wiring
-- isolated Linux install/uninstall
-- KDE Dolphin file/folder/archive menu generation
-- duplicate KDE service-menu prevention
-- all three batch output modes
-- batch logging
-- PNG conversion to JPG/JPEG/WEBP/ICO/TIF/TIFF/PDF
-- image lossless compression
-- arbitrary-percentage image compression
-- available TXT/DOCX/ODT/PDF document conversion paths
-- available CSV/XLSX/ODS/TSV/PDF spreadsheet conversion paths
-- OBJ to STL/PLY/GLB
-- archive wrapper command routing
-- Linux private `7zz` bootstrap using controlled fixtures
-- Tkinter/batch GUI module imports
-
-The test environment did not contain every optional/runtime dependency, so several platform-specific paths still require testing on the target machine.
-
-In particular:
-
-- real video/audio conversion and video compression require PyAV
-- PDF to DOCX requires `pdf2docx`
-- XLS output requires `xlwt`
-- real archive extraction requires an actual 7-Zip runtime
-- Windows registry integration and Inno Setup installation need a Windows environment
-
-# Project Structure
-
-```text
-Converter.py
-BatchLauncher.py
-cli.py
-updater.py
-version.py
-ssl_context.py
-verify_features.py
-
-batch_converter.py
-batch_dialog.py
-batch_menus.py
-
-video_converter.py
-audio_converter.py
-image_converter.py
-model_converter.py
-archive_manager.py
-media_compression.py
-document_converter.py
-spreadsheet_converter.py
-
-file_types.py
-platform_menu.py
-make_key.py
-linux_menu.py
-
-cleanup_old_folder_menu.py
-cleanup_linux_menus.py
-
-UwUConverter.spec
-UwUConverterBatch.spec
-UwUConverterCLI.spec
-UwUConverterUpdater.spec
-
-build_windows.bat
-build_linux.sh
-installer.iss
-
-install_linux.sh
-uninstall_linux.sh
-
-requirements.txt
-UwUConverter.ico
-```
-
-# Main Modules
-
-## `Converter.py`
-
-Handles GUI-side routing, right-click actions, installation, and uninstall operations.
-
-## `cli.py`
-
-Provides the installable `UwUConverter` terminal command.
-
-## `updater.py`
-
-Checks GitHub Releases, selects platform-specific packages, verifies downloads, and starts the platform updater/install flow.
-
-## `ssl_context.py`
-
-Creates a verified TLS context and helps packaged Linux builds find the host system CA certificate store.
-
-## `BatchLauncher.py`
-
-Launches the graphical batch converter.
-
-## `batch_dialog.py`
-
-Provides the batch GUI, progress bar, counters, cancellation, and optional log checkbox.
-
-## `batch_converter.py`
-
-Streams folders, performs per-file conversion, tracks progress, handles safe replacement, and optionally writes logs.
-
-## `model_converter.py`
-
-Handles OBJ, STL, PLY, and GLB model conversion through `trimesh`.
-
-## `archive_manager.py`
-
-Wraps 7-Zip for archive creation, extraction, listing, integrity testing, automatic 7-Zip setup, and safe delete-after-extract behavior.
-
-## `media_compression.py`
-
-Handles image and video compression.
-
-The module is named `media_compression.py` instead of `compression.py` to avoid shadowing Python 3.14's standard-library `compression` package.
-
-## `file_types.py`
-
-Defines single-file conversion actions.
-
-## `platform_menu.py`
-
-Selects Windows or Linux menu integration.
-
-## `make_key.py`
-
-Creates and removes Windows Registry menu entries.
-
-## `linux_menu.py`
-
-Creates and removes supported Linux file-manager integrations.
-
-## `verify_features.py`
-
-Runs broad automated project verification.
-
-# Troubleshooting
-
-## `UwUConverter` is not recognized on Windows
-
-Check that the CLI exists:
-
-```powershell
-Test-Path "$env:LOCALAPPDATA\Programs\UwUConverter\cli\UwUConverter.exe"
-```
-
-Check the user PATH:
-
-```powershell
-[Environment]::GetEnvironmentVariable("Path", "User") -split ";" |
-    Where-Object { $_ -like "*UwUConverter*" }
-```
-
-Expected entry:
-
-```text
-%LOCALAPPDATA%\Programs\UwUConverter\cli
-```
-
-Then close the current terminal and open a new one.
-
-## PowerShell will not run `UwUConverter.exe` from the current folder
-
-Use:
-
-```powershell
-.\UwUConverter.exe --help
-```
-
-rather than:
-
-```powershell
-UwUConverter.exe --help
-```
-
-unless the executable's directory is already in PATH.
-
-## Batch path contains a stray quote
-
-The CLI defensively trims invalid trailing double quotes from Windows paths before resolving them.
-
-Example:
-
-```powershell
-UwUConverter batch -c image -t webp -m folder ".\random pics"
-```
-
-## Old or duplicate Dolphin actions remain
-
-Refresh the integration:
-
-```bash
-python3 cleanup_linux_menus.py
-python3 Converter.py
 kbuildsycoca6
 dolphin --quit
 dolphin &
 ```
 
-Inspect generated entries:
+## Versions
 
-```bash
-find ~/.local/share/kio/servicemenus \
-  -maxdepth 1 \
-  -iname '*uwuconverter*' \
-  -print
-```
-
-## Linux updater reports `CERTIFICATE_VERIFY_FAILED`
-
-UwUConverter uses `ssl_context.py` to locate common Linux CA certificate bundles while keeping certificate verification enabled.
-
-Make sure the system CA certificates package is installed and rebuild/reinstall the packaged updater after updating the SSL helper.
-
-On Arch/CachyOS the system CA packages should normally already be present as part of the base system.
-
-## Linux archive extraction fails with a `/bin/sh` symbol lookup error
-
-A failure similar to:
+Application version information lives in:
 
 ```text
-/bin/sh: symbol lookup error: /bin/sh: undefined symbol: ...
+version.py
 ```
 
-can happen if a PyInstaller-packaged application passes its private `LD_LIBRARY_PATH` into a distro-provided shell wrapper.
+Windows installer version information in `installer.iss` should be kept in sync with application releases.
 
-The archive manager now restores or removes PyInstaller's library-path overrides before invoking external system tools and prefers `7zz` on Linux.
+# Known Limitations
 
-Rebuild and reinstall UwUConverter after updating `archive_manager.py`.
+- Linux integration is still experimental.
+- Browser extensions currently use assisted installation until store-published versions are configured.
+- Blob-backed browser images are not currently guaranteed to work.
+- Images requiring authenticated browser cookies may fail to download through the native host.
+- Not every codec can be remuxed into every video container.
+- Some formats require transcoding and may be slow.
+- VP8 encoding can be slow for large or high-resolution video.
+- Subtitle, attachment, and data streams may be skipped.
+- Camera RAW support depends on LibRaw compatibility.
+- Office document conversion may not preserve complex layouts exactly.
+- Spreadsheet conversion focuses primarily on cell values.
+- XLSB / XLSM conversion can lose workbook-only features.
+- Simplifying 3D model formats can lose materials, textures, hierarchy, animations, cameras, and lights.
+- Batch conversion is currently non-recursive.
+- Archive modification depends on what 7-Zip supports for the selected format.
+- Some archive formats are extraction-only.
+- Existing output files may be replaced or rejected depending on the operation.
 
-## 7-Zip is not found
+# Troubleshooting
 
-UwUConverter attempts automatic setup when 7-Zip is missing.
+## Windows 11 menu does not appear
 
-On Windows it can download/install 7-Zip.
+The modern menu is registered during installation.
 
-On Linux it can use or download a private `7zz` runtime.
+If modern registration fails, UwUConverter falls back to the classic context menu.
 
-You can still install 7-Zip manually through your operating system if preferred.
+Reinstalling the latest setup package refreshes both the package registration and fallback state.
 
-## Windows terminal still appears for GUI conversion
+## Two UwUConverter entries appear on Windows 11
 
-Make sure the installed GUI executable was rebuilt as a windowed PyInstaller application.
+Newer builds remove the old static registry verbs after the modern shell package has registered successfully.
 
-Changing Python source alone cannot change the subsystem of an already-built executable.
+Reinstall the latest setup package to clean stale menu registrations.
 
-## Compression does not hit the exact requested size
+## Linux installer is missing from the package
 
-Compression percentages are targets.
-
-Codec limitations, minimum useful bitrates, container overhead, and existing compression can affect the final size.
-
-## PDF warning appears on unrelated CLI commands
-
-The CLI uses lazy imports to avoid loading document conversion dependencies when they are not needed.
-
-If the warning still appears, confirm the installed CLI was rebuilt from the latest source.
-
-## Python 3.14 fails with `compression._common`
-
-Do not keep a local project file named:
+A current Linux release should contain:
 
 ```text
-compression.py
+UwUConverterInstaller
 ```
 
-Python 3.14 includes a standard-library package named `compression`.
+The GitHub Actions package verification checks this before publishing.
 
-UwUConverter uses:
+## Archive actions behave like folder actions on Windows
 
-```text
-media_compression.py
-```
+Modern builds classify folders using real filesystem attributes rather than Explorer's shell-folder flag. This prevents ZIP files from being mistaken for directories.
 
-instead.
+# Reporting Bugs
 
-# Development Status
+When reporting a conversion or integration problem, include:
 
-UwUConverter is under active development.
-
-Windows is currently the most tested platform.
-
-Linux support is experimental and continues to receive testing across distributions, file managers, codecs, archive runtimes, SSL configurations, and packaging environments.
+- Operating system and version
+- UwUConverter version
+- Input extension
+- Requested output/action
+- Full error traceback or installer/update log
+- Source audio/video codecs when relevant
+- File manager or browser when the problem is integration-related
 
 # License
 
 UwUConverter is licensed under the MIT License.
 
-See `LICENSE` for the full license text.
+You may use, copy, modify, distribute, sublicense, and sell copies of the software, provided that the original copyright and license notice are preserved.
+
+The software is provided without warranty. See the `LICENSE` file for the complete license text.
+
+# Development Status
+
+UwUConverter is a learning project and is under active development. Some unusual files, codecs, camera RAW formats, archive formats, office documents, 3D models, browser integrations, and conversion combinations may not work correctly yet.

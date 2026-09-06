@@ -45,6 +45,53 @@ saved_icon = os.path.join(
 icon_value = f'"{saved_icon}",0'
 
 
+MODERN_SHELL_SETTINGS_PATH = (
+    "Software\\Pink Sakura Studios\\UwUConverter"
+)
+
+MODERN_SHELL_REGISTERED_VALUE = (
+    "ModernShellRegistered"
+)
+
+
+def IsWindows11OrLater():
+    try:
+        version = sys.getwindowsversion()
+        return (
+            version.major >= 10
+            and version.build >= 22000
+        )
+    except AttributeError:
+        return False
+
+
+def IsModernShellRegistered():
+    if not IsWindows11OrLater():
+        return False
+
+    try:
+        with reg.OpenKey(
+            reg.HKEY_CURRENT_USER,
+            MODERN_SHELL_SETTINGS_PATH,
+            0,
+            reg.KEY_READ
+        ) as key:
+            value, _value_type = reg.QueryValueEx(
+                key,
+                MODERN_SHELL_REGISTERED_VALUE
+            )
+
+        return int(value) == 1
+
+    except (
+        FileNotFoundError,
+        OSError,
+        TypeError,
+        ValueError,
+    ):
+        return False
+
+
 def FindPythonw():
     candidates = []
 
@@ -109,23 +156,33 @@ def SaveIcon():
 def CreateExtensions(file_types):
     SaveIcon()
 
-    for extension, conversions in file_types.items():
-        ResetExtension(extension)
+    # Remove stale classic/static UwUConverter verbs first. Windows 11 can
+    # surface these in the modern menu too, creating a duplicate root beside
+    # the IExplorerCommand extension.
+    for extension in file_types:
+        ResetExtension(
+            extension
+        )
 
+    ResetFolderMenu()
+    ResetArchiveMenus()
+    ResetZipSelectionMenu()
+
+    # When the modern Windows 11 shell package is registered, do not recreate
+    # the classic verbs. If modern registration fails, this marker is absent
+    # and the classic menus remain the fallback.
+    if IsModernShellRegistered():
+        return
+
+    for extension, conversions in file_types.items():
         if conversions:
             AddExtension(
                 extension,
                 conversions
             )
 
-    ResetFolderMenu()
     AddFolderMenu()
-
-    ResetArchiveMenus()
     AddArchiveMenus()
-
-    ResetZipSelectionMenu()
-    AddZipSelectionMenu()
 
 
 def DeleteTree(root, key_path):
@@ -354,6 +411,49 @@ def CreateMenuItems(parent_path, items):
             )
 
 
+def AddZipChildMenu(
+    parent_path,
+    item_id="98_zip",
+):
+    item_path = (
+        parent_path
+        + "\\shell\\"
+        + item_id
+    )
+
+    with reg.CreateKey(
+        reg.HKEY_CURRENT_USER,
+        item_path
+    ) as item_key:
+        reg.SetValueEx(
+            item_key,
+            "MUIVerb",
+            0,
+            reg.REG_SZ,
+            "Compress Selection to ZIP..."
+        )
+        reg.SetValueEx(
+            item_key,
+            "Icon",
+            0,
+            reg.REG_SZ,
+            icon_value
+        )
+        reg.SetValueEx(
+            item_key,
+            "MultiSelectModel",
+            0,
+            reg.REG_SZ,
+            "Player"
+        )
+
+    CreateMultiCommand(
+        item_path
+        + "\\command",
+        "ARCHIVE_CREATE_ZIP_PROMPT"
+    )
+
+
 def AddExtension(file_type, conversions):
     key_path = (
         FILE_PATH_START
@@ -399,6 +499,10 @@ def AddExtension(file_type, conversions):
         conversions
     )
 
+    AddZipChildMenu(
+        key_path
+    )
+
 
 def AddFolderMenu():
     with reg.CreateKey(
@@ -410,7 +514,7 @@ def AddFolderMenu():
             "MUIVerb",
             0,
             reg.REG_SZ,
-            "Convert With UwUConverter ^-^"
+            "UwUConverter ^-^"
         )
         reg.SetValueEx(
             key,
@@ -421,15 +525,50 @@ def AddFolderMenu():
         )
         reg.SetValueEx(
             key,
+            "SubCommands",
+            0,
+            reg.REG_SZ,
+            ""
+        )
+        reg.SetValueEx(
+            key,
             "MultiSelectModel",
             0,
             reg.REG_SZ,
             "Player"
         )
 
+    batch_path = (
+        FOLDER_MENU_PATH
+        + "\\shell\\01_batch"
+    )
+
+    with reg.CreateKey(
+        reg.HKEY_CURRENT_USER,
+        batch_path
+    ) as item_key:
+        reg.SetValueEx(
+            item_key,
+            "MUIVerb",
+            0,
+            reg.REG_SZ,
+            "Batch Convert Folder..."
+        )
+        reg.SetValueEx(
+            item_key,
+            "Icon",
+            0,
+            reg.REG_SZ,
+            icon_value
+        )
+
     CreateCommand(
-        FOLDER_MENU_PATH + "\\command",
+        batch_path + "\\command",
         "BATCH_UI_ALL"
+    )
+
+    AddZipChildMenu(
+        FOLDER_MENU_PATH
     )
 
 
@@ -574,6 +713,10 @@ def AddArchiveMenus():
                 item_path + "\\command",
                 action
             )
+
+        AddZipChildMenu(
+            key_path
+        )
 
 
 def RemoveExtensions(file_types):
