@@ -57,22 +57,6 @@ LINUX_CHROMIUM_MANIFEST_DIRS = [
     / ".config/opera-beta/NativeMessagingHosts",
     pathlib.Path.home()
     / ".config/opera-developer/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".config/opera-gx/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".config/opera-gx-developer/NativeMessagingHosts",
-
-    # Opera/Opera GX Flatpak profile candidates. The sandbox can still
-    # restrict execution of an external native host; browser_setup.py warns
-    # Flatpak users about that case.
-    pathlib.Path.home()
-    / ".var/app/com.opera.Opera/config/opera/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".var/app/com.opera.Opera/config/google-chrome/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".var/app/com.opera.opera-gx/config/opera-gx/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".var/app/com.opera.opera-gx/config/google-chrome/NativeMessagingHosts",
 
     # Brave
     pathlib.Path.home()
@@ -87,16 +71,6 @@ LINUX_CHROMIUM_MANIFEST_DIRS = [
     / ".config/vivaldi/NativeMessagingHosts",
     pathlib.Path.home()
     / ".config/vivaldi-snapshot/NativeMessagingHosts",
-
-    # Common Flatpak Chromium-family profile locations.
-    pathlib.Path.home()
-    / ".var/app/org.chromium.Chromium/config/chromium/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".var/app/com.google.Chrome/config/google-chrome/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts",
-    pathlib.Path.home()
-    / ".var/app/com.vivaldi.Vivaldi/config/vivaldi/NativeMessagingHosts",
 ]
 
 LINUX_FIREFOX_MANIFEST_DIR = (

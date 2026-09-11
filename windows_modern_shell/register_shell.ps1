@@ -5,12 +5,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$PackageName = "PinkSakuraStudios.UwUConverterShell"
+$PackageName = "CherryMakesGames.UwUConverterShell"
 $ModernDir = Join-Path $InstallDir "modern-shell"
 $PackagePath = Join-Path $ModernDir "UwUConverterShell.msix"
 $CertificatePath = Join-Path $ModernDir "UwUConverterShell.cer"
 $CertificateState = Join-Path $ModernDir "trusted_dev_cert_thumbprint.txt"
 $LogPath = Join-Path $ModernDir "registration.log"
+$SettingsPath = "HKCU:\\Software\\Pink Sakura Studios\\UwUConverter"
+$ModernShellValue = "ModernShellRegistered"
 
 function Write-Log {
     param([string]$Text)
@@ -35,6 +37,14 @@ function Fail {
     Write-Error ("UwUConverter modern shell registration failed during " + $Step + ". " + $HResult + ": " + $Message)
     exit 1
 }
+
+New-Item -Path $SettingsPath -Force | Out-Null
+Set-ItemProperty `
+    -Path $SettingsPath `
+    -Name $ModernShellValue `
+    -Type DWord `
+    -Value 0 `
+    -Force
 
 Write-Log "PowerShell registration script started."
 Write-Log ("PowerShell version: " + $PSVersionTable.PSVersion.ToString())
@@ -102,6 +112,79 @@ try {
     }
 
     Write-Log ("Registered package: " + $RegisteredPackage.PackageFullName)
+
+    # Windows 11 can surface the old static registry verbs in the modern
+    # context menu, producing a second UwUConverter root. Enumerate the actual
+    # SystemFileAssociations children and remove our exact keys literally.
+    # This is more reliable than a wildcard Registry-provider path.
+    $SystemFileAssociations = (
+        "Registry::HKEY_CURRENT_USER"
+        + "\Software\Classes\SystemFileAssociations"
+    )
+
+    if (Test-Path -LiteralPath $SystemFileAssociations) {
+        Get-ChildItem `
+            -LiteralPath $SystemFileAssociations `
+            -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $ConversionKey = Join-Path `
+                    $_.PSPath `
+                    "shell\UwUConverter"
+
+                $ArchiveKey = Join-Path `
+                    $_.PSPath `
+                    "shell\UwUConverterExtract"
+
+                if (Test-Path -LiteralPath $ConversionKey) {
+                    Remove-Item `
+                        -LiteralPath $ConversionKey `
+                        -Recurse `
+                        -Force `
+                        -ErrorAction SilentlyContinue
+                }
+
+                if (Test-Path -LiteralPath $ArchiveKey) {
+                    Remove-Item `
+                        -LiteralPath $ArchiveKey `
+                        -Recurse `
+                        -Force `
+                        -ErrorAction SilentlyContinue
+                }
+            }
+    }
+
+    $LegacyLiteralKeys = @(
+        (
+            "Registry::HKEY_CURRENT_USER"
+            + "\Software\Classes\Directory"
+            + "\shell\UwUConverter"
+        ),
+        (
+            "Registry::HKEY_CURRENT_USER"
+            + "\Software\Classes\AllFilesystemObjects"
+            + "\shell\UwUConverterZipSelection"
+        )
+    )
+
+    foreach ($LegacyKey in $LegacyLiteralKeys) {
+        if (Test-Path -LiteralPath $LegacyKey) {
+            Remove-Item `
+                -LiteralPath $LegacyKey `
+                -Recurse `
+                -Force `
+                -ErrorAction SilentlyContinue
+        }
+    }
+
+    Set-ItemProperty `
+        -Path $SettingsPath `
+        -Name $ModernShellValue `
+        -Type DWord `
+        -Value 1 `
+        -Force
+
+    Write-Log "Removed legacy duplicate context-menu registrations using literal enumeration."
+    Write-Log "ModernShellRegistered=1"
     Write-Log "SUCCESS"
 }
 catch {

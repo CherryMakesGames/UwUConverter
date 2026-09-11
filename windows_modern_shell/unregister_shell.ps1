@@ -7,9 +7,11 @@ param(
 
 $ErrorActionPreference = "Continue"
 
-$PackageName = "PinkSakuraStudios.UwUConverterShell"
+$PackageName = "CherryMakesGames.UwUConverterShell"
 $ModernDir = Join-Path $InstallDir "modern-shell"
 $CertificateState = Join-Path $ModernDir "trusted_dev_cert_thumbprint.txt"
+$SettingsPath = "HKCU:\\Software\\Pink Sakura Studios\\UwUConverter"
+$ModernShellValue = "ModernShellRegistered"
 
 if ($CertificateOnly) {
     if (Test-Path -LiteralPath $CertificateState) {
@@ -25,6 +27,13 @@ if ($CertificateOnly) {
     }
 
     exit 0
+}
+
+if (Test-Path $SettingsPath) {
+    Remove-ItemProperty `
+        -Path $SettingsPath `
+        -Name $ModernShellValue `
+        -ErrorAction SilentlyContinue
 }
 
 Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue |

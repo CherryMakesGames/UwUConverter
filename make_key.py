@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 import sys
 import winreg as reg
 
@@ -65,6 +66,92 @@ def IsWindows11OrLater():
         return False
 
 
+def _WriteModernShellMarker(
+    registered,
+):
+    try:
+        with reg.CreateKey(
+            reg.HKEY_CURRENT_USER,
+            MODERN_SHELL_SETTINGS_PATH
+        ) as key:
+            reg.SetValueEx(
+                key,
+                MODERN_SHELL_REGISTERED_VALUE,
+                0,
+                reg.REG_DWORD,
+                1 if registered else 0
+            )
+    except OSError:
+        pass
+
+
+def _DetectModernShellPackage():
+    if os.name != "nt":
+        return False
+
+    powershell = os.path.join(
+        os.environ.get(
+            "SystemRoot",
+            r"C:\Windows"
+        ),
+        "System32",
+        "WindowsPowerShell",
+        "v1.0",
+        "powershell.exe"
+    )
+
+    if not os.path.isfile(
+        powershell
+    ):
+        return False
+
+    command = (
+        "$package = Get-AppxPackage "
+        "-Name 'CherryMakesGames.UwUConverterShell' "
+        "-ErrorAction SilentlyContinue | "
+        "Select-Object -First 1; "
+        "if ($null -ne $package) { "
+        "Write-Output 'REGISTERED' "
+        "}"
+    )
+
+    try:
+        result = subprocess.run(
+            [
+                powershell,
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                command,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=8,
+            check=False,
+            creationflags=(
+                getattr(
+                    subprocess,
+                    "CREATE_NO_WINDOW",
+                    0
+                )
+            ),
+        )
+
+        return (
+            result.returncode == 0
+            and "REGISTERED"
+            in result.stdout
+        )
+
+    except (
+        OSError,
+        subprocess.TimeoutExpired,
+    ):
+        return False
+
+
 def IsModernShellRegistered():
     if not IsWindows11OrLater():
         return False
@@ -81,7 +168,8 @@ def IsModernShellRegistered():
                 MODERN_SHELL_REGISTERED_VALUE
             )
 
-        return int(value) == 1
+        if int(value) == 1:
+            return True
 
     except (
         FileNotFoundError,
@@ -89,7 +177,21 @@ def IsModernShellRegistered():
         TypeError,
         ValueError,
     ):
-        return False
+        pass
+
+    # Older/test builds could have the modern AppX package registered while
+    # the marker was missing or stale. Detect the actual package once, repair
+    # the marker, and avoid recreating the old static registry menu.
+    registered = (
+        _DetectModernShellPackage()
+    )
+
+    if registered:
+        _WriteModernShellMarker(
+            True
+        )
+
+    return registered
 
 
 def FindPythonw():

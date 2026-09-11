@@ -5,6 +5,10 @@ from tkinter import messagebox
 from tkinter import ttk
 
 from batch_converter import batch_convert_folder
+from conflict_dialog import (
+    CANCEL,
+    show_output_conflict,
+)
 
 
 FORMATS = {
@@ -45,6 +49,9 @@ def open_batch_dialog(folder_path, category=None):
     events = queue.Queue()
     cancel_event = threading.Event()
     worker = None
+    conflict_apply_all = {
+        "action": None,
+    }
 
     frame = ttk.Frame(root, padding=18)
     frame.grid(row=0, column=0)
@@ -275,6 +282,47 @@ def open_batch_dialog(folder_path, category=None):
     def progress_callback(data):
         events.put(("progress", data))
 
+    def conflict_callback(
+        source_path,
+        output_path,
+    ):
+        remembered = conflict_apply_all[
+            "action"
+        ]
+
+        if remembered:
+            return remembered
+
+        request = {
+            "source": str(
+                source_path
+            ),
+            "output": str(
+                output_path
+            ),
+            "event": threading.Event(),
+            "decision": CANCEL,
+        }
+
+        events.put(
+            (
+                "conflict",
+                request,
+            )
+        )
+
+        while not request[
+            "event"
+        ].wait(
+            0.1
+        ):
+            if cancel_event.is_set():
+                return CANCEL
+
+        return request[
+            "decision"
+        ]
+
     def worker_main(action, create_log):
         try:
             stats = batch_convert_folder(
@@ -282,7 +330,8 @@ def open_batch_dialog(folder_path, category=None):
                 action,
                 progress_callback=progress_callback,
                 cancel_event=cancel_event,
-                create_log=create_log
+                create_log=create_log,
+                conflict_callback=conflict_callback,
             )
             events.put(("finished", stats))
         except Exception as error:
@@ -323,6 +372,9 @@ def open_batch_dialog(folder_path, category=None):
         )
 
         cancel_event.clear()
+        conflict_apply_all[
+            "action"
+        ] = None
         set_controls(False)
         cancel_button.config(state="normal")
         progress.config(mode="indeterminate")
@@ -404,6 +456,46 @@ def open_batch_dialog(folder_path, category=None):
 
                 if event_type == "progress":
                     handle_progress(payload)
+
+                elif event_type == "conflict":
+                    if cancel_event.is_set():
+                        payload[
+                            "decision"
+                        ] = CANCEL
+                    else:
+                        result = show_output_conflict(
+                            payload[
+                                "source"
+                            ],
+                            payload[
+                                "output"
+                            ],
+                            parent=root,
+                        )
+
+                        payload[
+                            "decision"
+                        ] = result[
+                            "action"
+                        ]
+
+                        if (
+                            result[
+                                "apply_all"
+                            ]
+                            and result[
+                                "action"
+                            ] != CANCEL
+                        ):
+                            conflict_apply_all[
+                                "action"
+                            ] = result[
+                                "action"
+                            ]
+
+                    payload[
+                        "event"
+                    ].set()
 
                 elif event_type == "finished":
                     progress.stop()

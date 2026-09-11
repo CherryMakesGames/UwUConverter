@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "3.0"
+#define MyAppVersion "0.11"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -62,7 +62,6 @@ var
   BraveIndex: Integer;
   VivaldiIndex: Integer;
   FirefoxIndex: Integer;
-  BrowserQuestionsAlreadyShown: Boolean;
 
 function FirstExistingFile(Candidate1, Candidate2, Candidate3, Candidate4: String): String;
 begin
@@ -139,20 +138,19 @@ begin
     ExpandConstant('{localappdata}\Mozilla Firefox\firefox.exe'), '');
 end;
 
-procedure AddDetectedBrowser(BrowserName, ExecutablePath: String; var BrowserIndex: Integer);
+procedure AddBrowserChoice(BrowserName, ExecutablePath: String; var BrowserIndex: Integer);
 begin
-  BrowserIndex := -1;
+  BrowserIndex := BrowserPage.CheckListBox.Items.Count;
+
   if ExecutablePath <> '' then
-  begin
-    BrowserIndex := BrowserPage.CheckListBox.Items.Count;
+    BrowserPage.Add(BrowserName + ' (detected)')
+  else
     BrowserPage.Add(BrowserName);
-    BrowserPage.Values[BrowserIndex] := True;
-  end;
+
+  BrowserPage.Values[BrowserIndex] := ExecutablePath <> '';
 end;
 
 procedure InitializeWizard();
-var
-  BrowserSetupValue: Cardinal;
 begin
   ChromeIndex := -1;
   ChromiumIndex := -1;
@@ -162,43 +160,34 @@ begin
   BraveIndex := -1;
   VivaldiIndex := -1;
   FirefoxIndex := -1;
-  BrowserQuestionsAlreadyShown := False;
-
-  if RegQueryDWordValue(
-    HKEY_CURRENT_USER,
-    'Software\Pink Sakura Studios\UwUConverter',
-    'BrowserQuestionsVersion',
-    BrowserSetupValue
-  ) then
-    BrowserQuestionsAlreadyShown := BrowserSetupValue >= 2;
 
   BrowserPage := CreateInputOptionPage(
     wpSelectTasks,
     'Browser integration',
-    'Install the UwUConverter browser extension',
-    'Select the browsers where you want UwUConverter available. After installation, '
-    + 'Setup opens the selected extension pages and the bundled extension folder. '
-    + 'Until store publishing, use Load unpacked, or Load Temporary Add-on in Firefox.',
+    'Set up UwUConverter in your web browsers',
+    'Select the browsers where you want the UwUConverter image right-click extension. '
+    + 'Detected browsers are pre-selected. Setup will open the extension-management '
+    + 'page and the bundled extension folder after installation.',
     False,
     False
   );
 
-  AddDetectedBrowser('Google Chrome', FindChrome(), ChromeIndex);
-  AddDetectedBrowser('Chromium', FindChromium(), ChromiumIndex);
-  AddDetectedBrowser('Microsoft Edge', FindEdge(), EdgeIndex);
-  AddDetectedBrowser('Opera', FindOpera(), OperaIndex);
-  AddDetectedBrowser('Opera GX', FindOperaGX(), OperaGXIndex);
-  AddDetectedBrowser('Brave', FindBrave(), BraveIndex);
-  AddDetectedBrowser('Vivaldi', FindVivaldi(), VivaldiIndex);
-  AddDetectedBrowser('Firefox', FindFirefox(), FirefoxIndex);
+  AddBrowserChoice('Google Chrome', FindChrome(), ChromeIndex);
+  AddBrowserChoice('Chromium', FindChromium(), ChromiumIndex);
+  AddBrowserChoice('Microsoft Edge', FindEdge(), EdgeIndex);
+  AddBrowserChoice('Opera', FindOpera(), OperaIndex);
+  AddBrowserChoice('Opera GX', FindOperaGX(), OperaGXIndex);
+  AddBrowserChoice('Brave', FindBrave(), BraveIndex);
+  AddBrowserChoice('Vivaldi', FindVivaldi(), VivaldiIndex);
+  AddBrowserChoice('Firefox', FindFirefox(), FirefoxIndex);
 end;
+
 
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
-  if PageID = BrowserPage.ID then
-    Result := BrowserQuestionsAlreadyShown or (BrowserPage.CheckListBox.Items.Count = 0);
 end;
+
 
 function BrowserSelected(BrowserIndex: Integer): Boolean;
 begin
@@ -226,7 +215,6 @@ procedure LaunchSelectedBrowserExtensions();
 var
   ChromiumFolderOpened: Boolean;
 begin
-  if BrowserQuestionsAlreadyShown then exit;
   ChromiumFolderOpened := False;
 
   if BrowserSelected(ChromeIndex) then begin
@@ -269,12 +257,6 @@ begin
     OpenFolder(ExpandConstant('{app}\browser-extension\firefox'));
   end;
 
-  RegWriteDWordValue(
-    HKEY_CURRENT_USER,
-    'Software\Pink Sakura Studios\UwUConverter',
-    'BrowserQuestionsVersion',
-    2
-  );
 end;
 
 procedure AddCliToPath();

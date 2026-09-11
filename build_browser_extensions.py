@@ -24,6 +24,9 @@ def build_one(browser):
 
     shutil.copytree(source, staging)
 
+    # Current extension folders already contain their own background.js.
+    # Older project layouts used browser_extension/background.js as a
+    # shared source, so keep that as a backwards-compatible fallback only.
     staged_background = staging / "background.js"
 
     if not staged_background.is_file():

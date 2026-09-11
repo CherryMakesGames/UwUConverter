@@ -12,13 +12,22 @@ from archive_progress_ui import (
 )
 from archive_ui import open_archive_manager
 from audio_converter import convert_audio
+from conflict_dialog import (
+    CANCEL,
+    KEEP_BOTH,
+    REPLACE,
+    SKIP,
+    ConflictResolver,
+    unique_output_path,
+)
 from batch_converter import batch_convert_folder
 from batch_dialog import open_batch_dialog
 from media_compression import (
     compress_video_lossless,
     compress_video_by_percent,
     compress_image_lossless,
-    compress_image_by_percent
+    compress_image_by_percent,
+    get_output_path,
 )
 from document_converter import convert_document
 from file_types import file_types
@@ -173,17 +182,31 @@ def CreateZipFromSelection(
     replace_existing = False
 
     if output.exists():
-        replace_existing = messagebox.askyesno(
-            "Replace existing ZIP?",
-            (
-                str(output)
-                + "\n\n"
-                + "already exists. Replace it?"
-            ),
+        resolver = ConflictResolver()
+        decision = resolver.resolve(
+            inputs[0],
+            output,
         )
 
-        if not replace_existing:
+        if decision == SKIP:
             return None
+
+        if decision == CANCEL:
+            return None
+
+        if decision == KEEP_BOTH:
+            output = unique_output_path(
+                output
+            )
+
+        elif decision == REPLACE:
+            replace_existing = True
+
+        else:
+            raise ValueError(
+                "Unknown conflict decision: "
+                + str(decision)
+            )
 
     success = show_create_archive_progress(
         output,
@@ -202,6 +225,56 @@ def CreateZipFromSelection(
         output
         if success
         else None
+    )
+
+
+def ResolveOutputConflict(
+    source_path,
+    output_path,
+    conflict_resolver=None,
+):
+    source = pathlib.Path(
+        source_path
+    ).expanduser().resolve()
+
+    output = pathlib.Path(
+        output_path
+    ).expanduser().resolve()
+
+    if (
+        source == output
+        or not output.exists()
+    ):
+        return output
+
+    resolver = (
+        conflict_resolver
+        if conflict_resolver is not None
+        else ConflictResolver()
+    )
+
+    decision = resolver.resolve(
+        source,
+        output,
+    )
+
+    if decision == REPLACE:
+        return output
+
+    if decision == KEEP_BOTH:
+        return unique_output_path(
+            output
+        )
+
+    if decision == SKIP:
+        return None
+
+    if decision == CANCEL:
+        return CANCEL
+
+    raise ValueError(
+        "Unknown conflict decision: "
+        + str(decision)
     )
 
 
@@ -251,6 +324,7 @@ def ConvertFiles(
     converted = 0
     skipped = 0
     failures = []
+    resolver = ConflictResolver()
 
     for file_path in file_paths:
         if not IsActionSupportedForFile(
@@ -261,11 +335,20 @@ def ConvertFiles(
             continue
 
         try:
-            ConvertFile(
+            result = ConvertFile(
                 file_path,
-                convert_type
+                convert_type,
+                conflict_resolver=resolver,
             )
-            converted += 1
+
+            if result == "skipped":
+                skipped += 1
+
+            elif result == "cancelled":
+                break
+
+            else:
+                converted += 1
 
         except Exception as error:
             failures.append(
@@ -306,7 +389,11 @@ def ConvertFiles(
     }
 
 
-def ConvertFile(file_path, convert_type):
+def ConvertFile(
+    file_path,
+    convert_type,
+    conflict_resolver=None,
+):
     action = convert_type.lower()
 
     if action == "batch_ui_all":
@@ -336,20 +423,44 @@ def ConvertFile(file_path, convert_type):
     )
 
     if action in VIDEO_OUTPUTS:
+        output_path = ResolveOutputConflict(
+            file_path,
+            output_base + "." + action,
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
         convert_video(
             file_path,
-            output_base + "." + action,
+            str(output_path),
             action
         )
-        return
+        return "converted"
 
     if action in AUDIO_OUTPUTS:
-        convert_audio(
+        output_path = ResolveOutputConflict(
             file_path,
             output_base + "." + action,
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
+        convert_audio(
+            file_path,
+            str(output_path),
             action
         )
-        return
+        return "converted"
 
     if (
         action in IMAGE_OUTPUTS
@@ -358,12 +469,24 @@ def ConvertFile(file_path, convert_type):
             ".webp", ".ico", ".tif", ".tiff", ".raw"
         }
     ):
-        convert_image(
+        output_path = ResolveOutputConflict(
             file_path,
             output_base + "." + action,
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
+        convert_image(
+            file_path,
+            str(output_path),
             action
         )
-        return
+        return "converted"
 
 
     model_actions = {
@@ -380,12 +503,24 @@ def ConvertFile(file_path, convert_type):
             model_actions[action]
         )
 
-        convert_model(
+        output_path = ResolveOutputConflict(
             file_path,
             output_base + suffix,
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
+        convert_model(
+            file_path,
+            str(output_path),
             output_format
         )
-        return
+        return "converted"
 
 
     if action == "archive_open_ui":
@@ -421,14 +556,45 @@ def ConvertFile(file_path, convert_type):
     if action in video_compression:
         percent = video_compression[action]
 
+        suffix = (
+            "_lossless"
+            if percent is None
+            else "_compressed_"
+            + str(percent)
+        )
+
+        output_path = ResolveOutputConflict(
+            file_path,
+            get_output_path(
+                file_path,
+                suffix,
+            ),
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
         if percent is None:
-            compress_video_lossless(file_path)
+            compress_video_lossless(
+                file_path,
+                output_file_path=str(
+                    output_path
+                ),
+            )
         else:
             compress_video_by_percent(
                 file_path,
-                percent
+                percent,
+                output_file_path=str(
+                    output_path
+                ),
             )
-        return
+
+        return "converted"
 
     image_compression = {
         "image_compress_lossless": None,
@@ -440,14 +606,45 @@ def ConvertFile(file_path, convert_type):
     if action in image_compression:
         percent = image_compression[action]
 
+        suffix = (
+            "_lossless"
+            if percent is None
+            else "_compressed_"
+            + str(percent)
+        )
+
+        output_path = ResolveOutputConflict(
+            file_path,
+            get_output_path(
+                file_path,
+                suffix,
+            ),
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
         if percent is None:
-            compress_image_lossless(file_path)
+            compress_image_lossless(
+                file_path,
+                output_file_path=str(
+                    output_path
+                ),
+            )
         else:
             compress_image_by_percent(
                 file_path,
-                percent
+                percent,
+                output_file_path=str(
+                    output_path
+                ),
             )
-        return
+
+        return "converted"
 
     document_actions = {
         "docxfpdf": (".docx", "docx_from_pdf"),
@@ -461,12 +658,24 @@ def ConvertFile(file_path, convert_type):
         suffix, output_format = (
             document_actions[action]
         )
-        convert_document(
+        output_path = ResolveOutputConflict(
             file_path,
             output_base + suffix,
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
+        convert_document(
+            file_path,
+            str(output_path),
             output_format
         )
-        return
+        return "converted"
 
     spreadsheet_actions = {
         "sheetpdf": (".pdf", "pdf"),
@@ -481,12 +690,24 @@ def ConvertFile(file_path, convert_type):
         suffix, output_format = (
             spreadsheet_actions[action]
         )
-        convert_spreadsheet(
+        output_path = ResolveOutputConflict(
             file_path,
             output_base + suffix,
+            conflict_resolver,
+        )
+
+        if output_path is None:
+            return "skipped"
+
+        if output_path == CANCEL:
+            return "cancelled"
+
+        convert_spreadsheet(
+            file_path,
+            str(output_path),
             output_format
         )
-        return
+        return "converted"
 
     raise ValueError(
         "Unknown conversion type: "

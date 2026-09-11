@@ -4,7 +4,7 @@ import time
 import traceback
 import uuid
 
-CATEGORY_EXTENSIONS = { 
+CATEGORY_EXTENSIONS = {
     "image": {
         ".png", ".jpg", ".jpeg", ".webp", ".ico",
         ".tif", ".tiff", ".raw"
@@ -97,6 +97,7 @@ def parse_batch_action(action):
     return category, mode, output_format
 
 
+
 class NullLog:
     def write(self, value):
         return len(value)
@@ -116,12 +117,14 @@ class NullLog:
         return False
 
 
+
 def batch_convert_folder(
     folder_path,
     action,
     progress_callback=None,
     cancel_event=None,
-    create_log=False
+    create_log=False,
+    conflict_callback=None,
 ):
     category, mode, output_format = (
         parse_batch_action(action)
@@ -276,11 +279,20 @@ def batch_convert_folder(
                             output_folder,
                             category,
                             mode,
-                            output_format
+                            output_format,
+                            conflict_callback=conflict_callback,
                         )
 
                         if result == "converted":
                             stats["converted"] += 1
+
+                        elif result == "cancelled":
+                            stats["cancelled"] = True
+                            log.write(
+                                f"CANCELLED\t{source}\t"
+                                "cancelled from conflict dialog\n"
+                            )
+
                         else:
                             stats["skipped"] += 1
                             log.write(
@@ -304,6 +316,9 @@ def batch_convert_folder(
                         "converting",
                         source.name
                     )
+
+                    if stats["cancelled"]:
+                        break
 
         elapsed = time.monotonic() - started
 
@@ -342,7 +357,8 @@ def convert_one(
     output_folder,
     category,
     mode,
-    output_format
+    output_format,
+    conflict_callback=None,
 ):
     target_extension = (
         OUTPUT_EXTENSIONS[output_format]
@@ -371,7 +387,35 @@ def convert_one(
         final_path.exists()
         and source_resolved != final_resolved
     ):
-        return "output already exists"
+        if conflict_callback is None:
+            return "output already exists"
+
+        decision = conflict_callback(
+            source,
+            final_path,
+        )
+
+        if decision == "skip":
+            return "skipped by user"
+
+        if decision == "cancel":
+            return "cancelled"
+
+        if decision == "keep_both":
+            from conflict_dialog import unique_output_path
+
+            final_path = unique_output_path(
+                final_path
+            )
+            final_resolved = (
+                final_path.resolve()
+            )
+
+        elif decision != "replace":
+            raise ValueError(
+                "Unknown conflict decision: "
+                + str(decision)
+            )
 
     temp_path = make_temp_output(
         final_path
@@ -516,6 +560,7 @@ def dispatch_conversion(
             output_format
         )
         return
+
 
     if category == "model":
         from model_converter import convert_model

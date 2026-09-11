@@ -4,6 +4,8 @@ import pathlib
 
 from PIL import Image
 
+from image_safety import open_image_safely
+
 
 
 VIDEO_SETTINGS = {
@@ -180,7 +182,7 @@ def encode_video_to_bitrate(
 def compress_image_lossless(file_path):
     extension = pathlib.Path(file_path).suffix.lower()
     output_file_path = get_output_path(file_path, "_lossless")
-    image = Image.open(file_path)
+    image = open_image_safely(file_path)
 
     try:
         if extension in (".jpg", ".jpeg"):
@@ -210,7 +212,7 @@ def compress_image_by_percent(file_path, percent):
     output_file_path = get_output_path(file_path, f"_compressed_{percent}")
     target_fraction = 1.0 - (percent / 100.0)
     target_size = max(int(os.path.getsize(file_path) * target_fraction), 1024)
-    image = Image.open(file_path)
+    image = open_image_safely(file_path)
 
     try:
         if extension in (".jpg", ".jpeg", ".webp"):

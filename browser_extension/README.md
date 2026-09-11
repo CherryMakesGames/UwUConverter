@@ -23,26 +23,10 @@ The extension does not convert the image itself. It sends the image URL and sele
 - Sites whose images require browser cookies/authentication may reject the native host's download request.
 - The destination is the operating system Downloads folder. A custom browser download directory cannot currently be discovered by the native host.
 
-## Chromium-family development install
-
-The same Chromium extension package is used for:
-
-- Google Chrome
-- Chromium
-- Microsoft Edge
-- Opera
-- Opera GX
-- Brave
-- Vivaldi
-- Chrome/Edge beta and developer channels
-
-Opera and Opera GX use Chrome-compatible extensions. Opera's Native Messaging
-documentation also uses the Google Chrome native-host registration location on
-Windows, so UwUConverter registers there automatically.
-
+## Chromium development install
 
 1. Build/install UwUConverter so `UwUConverterBrowserHost` is installed and registered.
-2. Open the browser's extensions page, for example `chrome://extensions`, `edge://extensions`, `chromium://extensions`, `opera://extensions`, `brave://extensions`, or `vivaldi://extensions`.
+2. Open `chrome://extensions`, `edge://extensions`, or `chromium://extensions`.
 3. Enable Developer mode.
 4. Choose **Load unpacked**.
 5. Select `browser_extension/chromium`.
@@ -76,7 +60,3 @@ python build_browser_extensions.py
 ```
 
 Generated packages are written under `browser_extension/dist/`.
-
-The Chromium ZIP is intentionally shared between Chrome, Edge, Opera, Opera GX,
-Brave, Vivaldi, Chromium, and compatible Chromium forks. They all receive the
-same pinned development extension ID when loaded from this package.
