@@ -1,11 +1,15 @@
+import ctypes
 import os
 import pathlib
 import platform
+import re
 import tarfile
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import urllib.request
 from ssl_context import create_verified_ssl_context
 
@@ -413,64 +417,310 @@ def _install_7zip_linux():
         )
 
 
+class ArchiveOperationCancelled(
+    RuntimeError
+):
+    pass
+
+
+_PROGRESS_RE = re.compile(
+    r"(?<!\d)(\d{1,3})%"
+)
+
+
+def _parse_progress_fragment(
+    fragment,
+):
+    matches = list(
+        _PROGRESS_RE.finditer(
+            fragment
+        )
+    )
+
+    if not matches:
+        return None, ""
+
+    percent = min(
+        100,
+        max(
+            0,
+            int(
+                matches[-1].group(1)
+            ),
+        ),
+    )
+
+    detail = (
+        fragment[
+            matches[-1].end():
+        ]
+        .strip()
+    )
+
+    # Typical 7-Zip progress looks like:
+    # " 42% 123 + folder/file.ext"
+    detail = re.sub(
+        r"^\s*\d+\s+[+\-]\s*",
+        "",
+        detail,
+    )
+
+    if len(detail) > 240:
+        detail = (
+            "..."
+            + detail[-237:]
+        )
+
+    return percent, detail
+
+
 def run_7zip(
     arguments,
     cwd=None,
     capture_output=False,
+    progress_callback=None,
+    cancel_event=None,
 ):
     executable = find_7zip()
 
-    process = subprocess.run(
-        [str(executable), *arguments],
-        check=False,
-        env=_clean_subprocess_environment(),
-        cwd=(
-            str(cwd)
-            if cwd is not None
-            else None
-        ),
-        stdout=(
-            subprocess.PIPE
-            if capture_output
-            else None
-        ),
-        stderr=(
-            subprocess.STDOUT
-            if capture_output
-            else None
-        ),
-        text=capture_output,
-        errors=(
-            "replace"
-            if capture_output
-            else None
-        ),
+    working_directory = (
+        str(cwd)
+        if cwd is not None
+        else None
     )
 
-    if process.returncode != 0:
-        error_text = (
-            process.stdout.strip()
-            if capture_output
-            and process.stdout
-            else ""
+    if (
+        progress_callback is None
+        and cancel_event is None
+    ):
+        process = subprocess.run(
+            [str(executable), *arguments],
+            check=False,
+            env=_clean_subprocess_environment(),
+            cwd=working_directory,
+            stdout=(
+                subprocess.PIPE
+                if capture_output
+                else None
+            ),
+            stderr=(
+                subprocess.STDOUT
+                if capture_output
+                else None
+            ),
+            text=capture_output,
+            errors=(
+                "replace"
+                if capture_output
+                else None
+            ),
         )
+
+        if process.returncode != 0:
+            error_text = (
+                process.stdout.strip()
+                if capture_output
+                and process.stdout
+                else ""
+            )
+
+            message = (
+                "7-Zip failed with exit code "
+                + str(process.returncode)
+            )
+
+            if error_text:
+                message += (
+                    "\n\n"
+                    + error_text
+                )
+
+            raise RuntimeError(
+                message
+            )
+
+        return process
+
+    progress_arguments = list(
+        arguments
+    )
+
+    if "-bsp1" not in progress_arguments:
+        progress_arguments.append(
+            "-bsp1"
+        )
+
+    if "-bb0" not in progress_arguments:
+        progress_arguments.append(
+            "-bb0"
+        )
+
+    process = subprocess.Popen(
+        [
+            str(executable),
+            *progress_arguments,
+        ],
+        env=_clean_subprocess_environment(),
+        cwd=working_directory,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+        bufsize=0,
+    )
+
+    stop_cancel_watch = (
+        threading.Event()
+    )
+
+    def cancel_watch():
+        if cancel_event is None:
+            return
+
+        while not stop_cancel_watch.wait(
+            0.10
+        ):
+            if not cancel_event.is_set():
+                continue
+
+            if process.poll() is None:
+                try:
+                    process.terminate()
+                except OSError:
+                    pass
+
+            return
+
+    watcher = threading.Thread(
+        target=cancel_watch,
+        daemon=True,
+    )
+    watcher.start()
+
+    output_parts = []
+    fragment = ""
+    last_percent = -1
+    last_detail = ""
+
+    try:
+        if process.stdout is not None:
+            while True:
+                char = process.stdout.read(
+                    1
+                )
+
+                if char == "":
+                    break
+
+                output_parts.append(
+                    char
+                )
+
+                # Keep diagnostics bounded even for enormous archives.
+                if len(output_parts) > 200000:
+                    output_parts = (
+                        output_parts[-100000:]
+                    )
+
+                if char in "\r\n":
+                    if fragment:
+                        percent, detail = (
+                            _parse_progress_fragment(
+                                fragment
+                            )
+                        )
+
+                        if percent is not None:
+                            if (
+                                percent != last_percent
+                                or detail != last_detail
+                            ):
+                                last_percent = percent
+                                last_detail = detail
+
+                                if progress_callback is not None:
+                                    progress_callback(
+                                        percent,
+                                        detail,
+                                    )
+
+                    fragment = ""
+                    continue
+
+                fragment += char
+
+                if char == "%":
+                    percent, detail = (
+                        _parse_progress_fragment(
+                            fragment
+                        )
+                    )
+
+                    if percent is not None:
+                        if (
+                            percent != last_percent
+                            or detail != last_detail
+                        ):
+                            last_percent = percent
+                            last_detail = detail
+
+                            if progress_callback is not None:
+                                progress_callback(
+                                    percent,
+                                    detail,
+                                )
+
+        return_code = process.wait()
+
+    finally:
+        stop_cancel_watch.set()
+
+    if (
+        cancel_event is not None
+        and cancel_event.is_set()
+    ):
+        raise ArchiveOperationCancelled(
+            "Archive operation cancelled."
+        )
+
+    if return_code != 0:
+        error_text = "".join(
+            output_parts
+        ).strip()
 
         message = (
             "7-Zip failed with exit code "
-            + str(process.returncode)
+            + str(return_code)
         )
 
         if error_text:
             message += (
                 "\n\n"
-                + error_text
+                + error_text[-6000:]
             )
 
         raise RuntimeError(
             message
         )
 
-    return process
+    if progress_callback is not None:
+        progress_callback(
+            100,
+            last_detail,
+        )
+
+    class ProgressResult:
+        pass
+
+    result = ProgressResult()
+    result.returncode = return_code
+    result.stdout = (
+        "".join(output_parts)
+        if capture_output
+        else None
+    )
+
+    return result
 
 
 def create_archive(
@@ -482,6 +732,8 @@ def create_archive(
     encrypt_headers=False,
     force=False,
     working_directory=None,
+    progress_callback=None,
+    cancel_event=None,
 ):
     archive = pathlib.Path(archive_path).expanduser().resolve()
 
@@ -607,6 +859,8 @@ def create_archive(
     run_7zip(
         arguments,
         cwd=working_path,
+        progress_callback=progress_callback,
+        cancel_event=cancel_event,
     )
 
     if not archive.is_file() or archive.stat().st_size <= 0:
@@ -615,16 +869,291 @@ def create_archive(
     return archive
 
 
+
+def archive_layout_summary(
+    archive_path,
+):
+    entries = list_archive_entries(
+        archive_path
+    )
+
+    top_level = {}
+
+    for entry in entries:
+        raw_path = (
+            str(
+                entry.get(
+                    "path",
+                    "",
+                )
+            )
+            .replace(
+                "\\",
+                "/",
+            )
+            .strip("/")
+        )
+
+        if not raw_path:
+            continue
+
+        first = raw_path.split(
+            "/",
+            1,
+        )[0]
+
+        info = top_level.setdefault(
+            first,
+            {
+                "name": first,
+                "folder": False,
+                "nested": False,
+            },
+        )
+
+        if "/" in raw_path:
+            info["nested"] = True
+
+        if (
+            raw_path == first
+            and entry.get(
+                "folder"
+            )
+        ):
+            info["folder"] = True
+
+    names = sorted(
+        top_level,
+        key=str.casefold,
+    )
+
+    single_root_folder = False
+
+    if len(names) == 1:
+        info = top_level[
+            names[0]
+        ]
+
+        single_root_folder = (
+            info["folder"]
+            or info["nested"]
+        )
+
+    return {
+        "entries": entries,
+        "top_level_names": names,
+        "top_level_count": len(names),
+        "single_root_folder": single_root_folder,
+        "scatters_on_extract_here": (
+            len(names) > 1
+        ),
+    }
+
+
+def _set_windows_created_modified_now(
+    path,
+    timestamp,
+):
+    if os.name != "nt":
+        return
+
+    FILE_WRITE_ATTRIBUTES = 0x0100
+    FILE_SHARE_READ = 0x00000001
+    FILE_SHARE_WRITE = 0x00000002
+    FILE_SHARE_DELETE = 0x00000004
+    OPEN_EXISTING = 3
+    FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
+    INVALID_HANDLE_VALUE = (
+        ctypes.c_void_p(-1).value
+    )
+
+    class FILETIME(
+        ctypes.Structure
+    ):
+        _fields_ = [
+            (
+                "dwLowDateTime",
+                ctypes.c_uint32,
+            ),
+            (
+                "dwHighDateTime",
+                ctypes.c_uint32,
+            ),
+        ]
+
+    value = int(
+        (
+            timestamp
+            + 11644473600
+        )
+        * 10000000
+    )
+
+    file_time = FILETIME(
+        value & 0xFFFFFFFF,
+        value >> 32,
+    )
+
+    kernel32 = ctypes.windll.kernel32
+
+    flags = (
+        FILE_FLAG_BACKUP_SEMANTICS
+        if pathlib.Path(path).is_dir()
+        else 0
+    )
+
+    handle = kernel32.CreateFileW(
+        str(path),
+        FILE_WRITE_ATTRIBUTES,
+        (
+            FILE_SHARE_READ
+            | FILE_SHARE_WRITE
+            | FILE_SHARE_DELETE
+        ),
+        None,
+        OPEN_EXISTING,
+        flags,
+        None,
+    )
+
+    if handle == INVALID_HANDLE_VALUE:
+        return
+
+    try:
+        kernel32.SetFileTime(
+            handle,
+            ctypes.byref(
+                file_time
+            ),
+            None,
+            ctypes.byref(
+                file_time
+            ),
+        )
+    finally:
+        kernel32.CloseHandle(
+            handle
+        )
+
+
+def _touch_path_now(
+    path,
+    timestamp=None,
+):
+    target = pathlib.Path(
+        path
+    )
+
+    if not target.exists():
+        return
+
+    if timestamp is None:
+        timestamp = time.time()
+
+    try:
+        os.utime(
+            target,
+            (
+                timestamp,
+                timestamp,
+            ),
+            follow_symlinks=False,
+        )
+    except (
+        OSError,
+        NotImplementedError,
+    ):
+        pass
+
+    try:
+        _set_windows_created_modified_now(
+            target,
+            timestamp,
+        )
+    except Exception:
+        # Timestamp refresh should never make a successful extraction fail.
+        pass
+
+
+def refresh_extracted_top_level_timestamps(
+    output_dir,
+    entries=None,
+    touch_output_folder=False,
+):
+    output = pathlib.Path(
+        output_dir
+    )
+
+    now = time.time()
+
+    if touch_output_folder:
+        _touch_path_now(
+            output,
+            now,
+        )
+
+    if entries is None:
+        return
+
+    names = set()
+
+    for entry in entries:
+        path = (
+            str(
+                entry.get(
+                    "path",
+                    "",
+                )
+            )
+            .replace(
+                "\\",
+                "/",
+            )
+            .strip("/")
+        )
+
+        if not path:
+            continue
+
+        names.add(
+            path.split(
+                "/",
+                1,
+            )[0]
+        )
+
+    for name in names:
+        _touch_path_now(
+            output / name,
+            now,
+        )
+
+
 def extract_archive(
     archive_path,
     output_dir=None,
     password=None,
     overwrite=True,
+    progress_callback=None,
+    cancel_event=None,
+    entry_metadata=None,
+    refresh_timestamps=True,
 ):
-    archive = pathlib.Path(archive_path).expanduser().resolve()
+    archive = pathlib.Path(
+        archive_path
+    ).expanduser().resolve()
 
-    extension = archive.suffix.lower().lstrip(".")
-    if extension and extension not in EXTRACT_FORMATS:
+    extension = (
+        archive.suffix
+        .lower()
+        .lstrip(".")
+    )
+
+    if (
+        extension
+        and extension
+        not in EXTRACT_FORMATS
+    ):
         raise ValueError(
             "Unsupported archive format for extraction."
         )
@@ -634,15 +1163,42 @@ def extract_archive(
             f"Archive does not exist: {archive}"
         )
 
+    extracting_into_named_folder = (
+        output_dir is None
+    )
+
     if output_dir is None:
-        output = archive.parent / archive.stem
+        output = (
+            archive.parent
+            / archive.stem
+        )
     else:
-        output = pathlib.Path(output_dir).expanduser().resolve()
+        output = (
+            pathlib.Path(
+                output_dir
+            )
+            .expanduser()
+            .resolve()
+        )
 
     output.mkdir(
         parents=True,
         exist_ok=True
     )
+
+    if (
+        refresh_timestamps
+        and entry_metadata is None
+        and not extracting_into_named_folder
+    ):
+        try:
+            entry_metadata = (
+                list_archive_entries(
+                    archive
+                )
+            )
+        except Exception:
+            entry_metadata = None
 
     arguments = [
         "x",
@@ -652,9 +1208,25 @@ def extract_archive(
     ]
 
     if password:
-        arguments.append("-p" + password)
+        arguments.append(
+            "-p" + password
+        )
 
-    run_7zip(arguments)
+    run_7zip(
+        arguments,
+        progress_callback=progress_callback,
+        cancel_event=cancel_event,
+    )
+
+    if refresh_timestamps:
+        refresh_extracted_top_level_timestamps(
+            output,
+            entries=entry_metadata,
+            touch_output_folder=(
+                extracting_into_named_folder
+            ),
+        )
+
     return output
 
 
@@ -889,6 +1461,9 @@ def extract_archive_entries(
     output_dir,
     password=None,
     overwrite=True,
+    progress_callback=None,
+    cancel_event=None,
+    refresh_timestamps=True,
 ):
     archive = (
         _validate_archive_for_reading(
@@ -921,6 +1496,9 @@ def extract_archive_entries(
             output_dir=output,
             password=password,
             overwrite=overwrite,
+            progress_callback=progress_callback,
+            cancel_event=cancel_event,
+            refresh_timestamps=refresh_timestamps,
         )
 
     arguments = [
@@ -937,8 +1515,22 @@ def extract_archive_entries(
         )
 
     run_7zip(
-        arguments
+        arguments,
+        progress_callback=progress_callback,
+        cancel_event=cancel_event,
     )
+
+    if refresh_timestamps:
+        refresh_extracted_top_level_timestamps(
+            output,
+            entries=[
+                {
+                    "path": path
+                }
+                for path in entries
+            ],
+            touch_output_folder=False,
+        )
 
     return output
 
@@ -978,6 +1570,8 @@ def add_to_archive(
     archive_path,
     input_paths,
     working_directory=None,
+    progress_callback=None,
+    cancel_event=None,
 ):
     archive = (
         pathlib.Path(
@@ -1055,6 +1649,8 @@ def add_to_archive(
     run_7zip(
         arguments,
         cwd=working_path,
+        progress_callback=progress_callback,
+        cancel_event=cancel_event,
     )
 
     if not archive.is_file():
@@ -1070,6 +1666,10 @@ def extract_archive_with_options(
     password=None,
     overwrite=True,
     delete_source=False,
+    progress_callback=None,
+    cancel_event=None,
+    entry_metadata=None,
+    refresh_timestamps=True,
 ):
     archive = pathlib.Path(
         archive_path
@@ -1080,9 +1680,14 @@ def extract_archive_with_options(
         output_dir=output_dir,
         password=password,
         overwrite=overwrite,
+        progress_callback=progress_callback,
+        cancel_event=cancel_event,
+        entry_metadata=entry_metadata,
+        refresh_timestamps=refresh_timestamps,
     )
 
     if delete_source:
         archive.unlink()
 
     return output
+

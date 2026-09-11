@@ -11,12 +11,15 @@ from tkinter import simpledialog
 from tkinter import ttk
 
 from archive_manager import (
-    add_to_archive,
-    create_archive,
     delete_archive_entries,
     extract_archive_entries,
     list_archive_entries,
     test_archive,
+)
+from archive_progress_ui import (
+    show_add_to_archive_progress,
+    show_create_archive_progress,
+    show_extract_entries_progress,
 )
 
 
@@ -943,8 +946,20 @@ class ArchiveManagerWindow:
         if not inputs:
             return
 
-        try:
-            archive = create_archive(
+        working_directory = (
+            pathlib.Path(
+                inputs[0]
+            ).resolve().parent
+            if all(
+                pathlib.Path(path).resolve().parent
+                == pathlib.Path(inputs[0]).resolve().parent
+                for path in inputs
+            )
+            else None
+        )
+
+        success = (
+            show_create_archive_progress(
                 output,
                 inputs,
                 force=(
@@ -952,27 +967,15 @@ class ArchiveManagerWindow:
                         output
                     ).exists()
                 ),
-                working_directory=(
-                    pathlib.Path(
-                        inputs[0]
-                    ).resolve().parent
-                    if all(
-                        pathlib.Path(path).resolve().parent
-                        == pathlib.Path(inputs[0]).resolve().parent
-                        for path in inputs
-                    )
-                    else None
-                ),
+                working_directory=working_directory,
+                parent=self.root,
             )
-        except Exception as error:
-            self._show_error(
-                error
-            )
-            return
-
-        self.open_archive(
-            archive
         )
+
+        if success:
+            self.open_archive(
+                output
+            )
 
     def refresh(self):
         if not self._need_archive():
@@ -1384,27 +1387,13 @@ class ArchiveManagerWindow:
             self.selected_paths()
         )
 
-        try:
-            extract_archive_entries(
-                self.archive_path,
-                selected,
-                output,
-                password=self.password,
-            )
-
-            messagebox.showinfo(
-                "UwUConverter Archive Manager",
-                (
-                    "Extraction finished.\n\n"
-                    + output
-                ),
-                parent=self.root,
-            )
-
-        except Exception as error:
-            self._show_error(
-                error
-            )
+        show_extract_entries_progress(
+            self.archive_path,
+            selected,
+            output,
+            password=self.password,
+            parent=self.root,
+        )
 
     def add_files(self):
         if not self._need_archive():
@@ -1463,8 +1452,8 @@ class ArchiveManagerWindow:
             for path in paths
         )
 
-        try:
-            add_to_archive(
+        success = (
+            show_add_to_archive_progress(
                 self.archive_path,
                 paths,
                 working_directory=(
@@ -1472,13 +1461,12 @@ class ArchiveManagerWindow:
                     if same_parent
                     else None
                 ),
+                parent=self.root,
             )
-            self.refresh()
+        )
 
-        except Exception as error:
-            self._show_error(
-                error
-            )
+        if success:
+            self.refresh()
 
     def delete_selected(self):
         if not self._need_archive():

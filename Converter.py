@@ -6,6 +6,10 @@ from tkinter import messagebox
 import av
 
 import platform_menu
+from archive_progress_ui import (
+    show_create_archive_progress,
+    show_extract_archives_progress,
+)
 from archive_ui import open_archive_manager
 from audio_converter import convert_audio
 from batch_converter import batch_convert_folder
@@ -95,8 +99,6 @@ def CreateZipFromSelection(
 ):
     from tkinter import filedialog
 
-    from archive_manager import create_archive
-
     inputs = [
         pathlib.Path(path)
         .expanduser()
@@ -183,7 +185,7 @@ def CreateZipFromSelection(
         if not replace_existing:
             return None
 
-    created = create_archive(
+    success = show_create_archive_progress(
         output,
         inputs,
         archive_format="zip",
@@ -196,21 +198,56 @@ def CreateZipFromSelection(
         ),
     )
 
-    messagebox.showinfo(
-        "UwUConverter",
-        (
-            "ZIP archive created:\n\n"
-            + str(created)
-        ),
+    return (
+        output
+        if success
+        else None
     )
-
-    return created
 
 
 def ConvertFiles(
     file_paths,
     convert_type
 ):
+    action = convert_type.lower()
+
+    if action.startswith(
+        "archive_extract_"
+    ):
+        archives = [
+            file_path
+            for file_path in file_paths
+            if IsActionSupportedForFile(
+                file_path,
+                action
+            )
+        ]
+
+        if archives:
+            success = (
+                show_extract_archives_progress(
+                    archives,
+                    action,
+                )
+            )
+
+            return {
+                "converted": (
+                    len(archives)
+                    if success
+                    else 0
+                ),
+                "skipped": (
+                    len(file_paths)
+                    - len(archives)
+                ),
+                "failed": (
+                    0
+                    if success
+                    else len(archives)
+                ),
+            }
+
     converted = 0
     skipped = 0
     failures = []
@@ -359,22 +396,18 @@ def ConvertFile(file_path, convert_type):
 
 
     archive_actions = {
-        "archive_extract_here": (False, False),
-        "archive_extract_folder": (True, False),
-        "archive_extract_here_delete": (False, True),
-        "archive_extract_folder_delete": (True, True),
+        "archive_extract_here",
+        "archive_extract_folder",
+        "archive_extract_here_delete",
+        "archive_extract_folder_delete",
     }
 
     if action in archive_actions:
-        from archive_manager import extract_archive_with_options
-
-        source = pathlib.Path(file_path).expanduser().resolve()
-        into_folder, delete_source = archive_actions[action]
-
-        extract_archive_with_options(
-            source,
-            output_dir=None if into_folder else source.parent,
-            delete_source=delete_source,
+        show_extract_archives_progress(
+            [
+                file_path
+            ],
+            action,
         )
         return
 
