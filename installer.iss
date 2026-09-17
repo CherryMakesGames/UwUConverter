@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "3.1"
+#define MyAppVersion "0.11"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -153,87 +153,6 @@ begin
   BrowserPage.Values[BrowserIndex] := ExecutablePath <> '';
 end;
 
-procedure InitializeWizard();
-begin
-  ChromeIndex := -1;
-  ChromiumIndex := -1;
-  EdgeIndex := -1;
-  OperaIndex := -1;
-  OperaGXIndex := -1;
-  BraveIndex := -1;
-  VivaldiIndex := -1;
-  FirefoxIndex := -1;
-
-  BrowserPage := CreateInputOptionPage(
-    wpSelectTasks,
-    'Browser integration',
-    'Set up UwUConverter in your web browsers',
-    'Select the browsers where you want the UwUConverter image right-click extension. '
-    + 'Detected browsers are pre-selected. Setup will open the extension-management '
-    + 'page and the bundled extension folder after installation.',
-    False,
-    False
-  );
-
-  AddBrowserChoice('Google Chrome', FindChrome(), ChromeIndex);
-  AddBrowserChoice('Chromium', FindChromium(), ChromiumIndex);
-  AddBrowserChoice('Microsoft Edge', FindEdge(), EdgeIndex);
-  AddBrowserChoice('Opera', FindOpera(), OperaIndex);
-  AddBrowserChoice('Opera GX', FindOperaGX(), OperaGXIndex);
-  AddBrowserChoice('Brave', FindBrave(), BraveIndex);
-  AddBrowserChoice('Vivaldi', FindVivaldi(), VivaldiIndex);
-  AddBrowserChoice('Firefox', FindFirefox(), FirefoxIndex);
-
-  BrowserGuidePage := CreateCustomPage(
-    BrowserPage.ID,
-    'Install the browser extension',
-    'Complete this browser step after UwUConverter is installed'
-  );
-
-  BrowserGuideIntro := TNewStaticText.Create(WizardForm);
-  BrowserGuideIntro.Parent := BrowserGuidePage.Surface;
-  BrowserGuideIntro.Left := 0;
-  BrowserGuideIntro.Top := 0;
-  BrowserGuideIntro.Width := BrowserGuidePage.SurfaceWidth;
-  BrowserGuideIntro.AutoSize := False;
-  BrowserGuideIntro.Height := ScaleY(42);
-  BrowserGuideIntro.WordWrap := True;
-  BrowserGuideIntro.Caption :=
-    'Keep this page open while installing. After Setup copies the files, '
-    + 'it will open the selected browser extension page and extension folder '
-    + 'for you.';
-
-  BrowserGuideMemo := TNewMemo.Create(WizardForm);
-  BrowserGuideMemo.Parent := BrowserGuidePage.Surface;
-  BrowserGuideMemo.Left := 0;
-  BrowserGuideMemo.Top := BrowserGuideIntro.Top + BrowserGuideIntro.Height + ScaleY(8);
-  BrowserGuideMemo.Width := BrowserGuidePage.SurfaceWidth;
-  BrowserGuideMemo.Height :=
-    BrowserGuidePage.SurfaceHeight - BrowserGuideMemo.Top;
-  BrowserGuideMemo.ReadOnly := True;
-  BrowserGuideMemo.ScrollBars := ssVertical;
-  BrowserGuideMemo.WordWrap := True;
-
-  UpdateBrowserGuide();
-end;
-
-
-function ShouldSkipPage(PageID: Integer): Boolean;
-begin
-  Result := False;
-end;
-
-
-procedure CurPageChanged(CurPageID: Integer);
-begin
-  if Assigned(BrowserGuidePage) and
-     (CurPageID = BrowserGuidePage.ID) then
-  begin
-    UpdateBrowserGuide();
-  end;
-end;
-
-
 function BrowserSelected(BrowserIndex: Integer): Boolean;
 begin
   Result := (BrowserIndex >= 0) and BrowserPage.Values[BrowserIndex];
@@ -377,6 +296,87 @@ begin
   begin
     BrowserGuideMemo.Lines.Text :=
       BuildBrowserGuide();
+  end;
+end;
+
+
+procedure InitializeWizard();
+begin
+  ChromeIndex := -1;
+  ChromiumIndex := -1;
+  EdgeIndex := -1;
+  OperaIndex := -1;
+  OperaGXIndex := -1;
+  BraveIndex := -1;
+  VivaldiIndex := -1;
+  FirefoxIndex := -1;
+
+  BrowserPage := CreateInputOptionPage(
+    wpSelectTasks,
+    'Browser integration',
+    'Set up UwUConverter in your web browsers',
+    'Select the browsers where you want the UwUConverter image right-click extension. '
+    + 'Detected browsers are pre-selected. Setup will open the extension-management '
+    + 'page and the bundled extension folder after installation.',
+    False,
+    False
+  );
+
+  AddBrowserChoice('Google Chrome', FindChrome(), ChromeIndex);
+  AddBrowserChoice('Chromium', FindChromium(), ChromiumIndex);
+  AddBrowserChoice('Microsoft Edge', FindEdge(), EdgeIndex);
+  AddBrowserChoice('Opera', FindOpera(), OperaIndex);
+  AddBrowserChoice('Opera GX', FindOperaGX(), OperaGXIndex);
+  AddBrowserChoice('Brave', FindBrave(), BraveIndex);
+  AddBrowserChoice('Vivaldi', FindVivaldi(), VivaldiIndex);
+  AddBrowserChoice('Firefox', FindFirefox(), FirefoxIndex);
+
+  BrowserGuidePage := CreateCustomPage(
+    BrowserPage.ID,
+    'Install the browser extension',
+    'Complete this browser step after UwUConverter is installed'
+  );
+
+  BrowserGuideIntro := TNewStaticText.Create(WizardForm);
+  BrowserGuideIntro.Parent := BrowserGuidePage.Surface;
+  BrowserGuideIntro.Left := 0;
+  BrowserGuideIntro.Top := 0;
+  BrowserGuideIntro.Width := BrowserGuidePage.SurfaceWidth;
+  BrowserGuideIntro.AutoSize := False;
+  BrowserGuideIntro.Height := ScaleY(42);
+  BrowserGuideIntro.WordWrap := True;
+  BrowserGuideIntro.Caption :=
+    'Keep this page open while installing. After Setup copies the files, '
+    + 'it will open the selected browser extension page and extension folder '
+    + 'for you.';
+
+  BrowserGuideMemo := TNewMemo.Create(WizardForm);
+  BrowserGuideMemo.Parent := BrowserGuidePage.Surface;
+  BrowserGuideMemo.Left := 0;
+  BrowserGuideMemo.Top := BrowserGuideIntro.Top + BrowserGuideIntro.Height + ScaleY(8);
+  BrowserGuideMemo.Width := BrowserGuidePage.SurfaceWidth;
+  BrowserGuideMemo.Height :=
+    BrowserGuidePage.SurfaceHeight - BrowserGuideMemo.Top;
+  BrowserGuideMemo.ReadOnly := True;
+  BrowserGuideMemo.ScrollBars := ssVertical;
+  BrowserGuideMemo.WordWrap := True;
+
+  UpdateBrowserGuide();
+end;
+
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+end;
+
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if Assigned(BrowserGuidePage) and
+     (CurPageID = BrowserGuidePage.ID) then
+  begin
+    UpdateBrowserGuide();
   end;
 end;
 
