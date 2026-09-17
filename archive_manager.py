@@ -474,6 +474,32 @@ def _parse_progress_fragment(
     return percent, detail
 
 
+def _hidden_subprocess_options():
+    if os.name != "nt":
+        return {}
+
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= getattr(
+        subprocess,
+        "STARTF_USESHOWWINDOW",
+        0,
+    )
+    startupinfo.wShowWindow = getattr(
+        subprocess,
+        "SW_HIDE",
+        0,
+    )
+
+    return {
+        "startupinfo": startupinfo,
+        "creationflags": getattr(
+            subprocess,
+            "CREATE_NO_WINDOW",
+            0,
+        ),
+    }
+
+
 def run_7zip(
     arguments,
     cwd=None,
@@ -514,6 +540,7 @@ def run_7zip(
                 if capture_output
                 else None
             ),
+            **_hidden_subprocess_options(),
         )
 
         if process.returncode != 0:
@@ -567,6 +594,7 @@ def run_7zip(
         text=True,
         errors="replace",
         bufsize=0,
+        **_hidden_subprocess_options(),
     )
 
     stop_cancel_watch = (

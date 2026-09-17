@@ -5,7 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$PackageName = "CherryMakesGames.UwUConverterShell"
+$ExpectedPackageName = "CherryMakesGames.UwUConverterShell"
+$PackageName = $ExpectedPackageName
 $ModernDir = Join-Path -Path $InstallDir -ChildPath "modern-shell"
 $PackagePath = Join-Path -Path $ModernDir -ChildPath "UwUConverterShell.msix"
 $CertificatePath = Join-Path -Path $ModernDir -ChildPath "UwUConverterShell.cer"
@@ -13,6 +14,92 @@ $CertificateState = Join-Path -Path $ModernDir -ChildPath "trusted_dev_cert_thum
 $LogPath = Join-Path -Path $ModernDir -ChildPath "registration.log"
 $SettingsPath = "HKCU:\Software\Pink Sakura Studios\UwUConverter"
 $ModernShellValue = "ModernShellRegistered"
+
+function Get-PackageIdentityName {
+    param(
+        [string]$MsixPath
+    )
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    $Archive = [System.IO.Compression.ZipFile]::OpenRead($MsixPath)
+
+    try {
+        $ManifestEntry = $Archive.GetEntry("AppxManifest.xml")
+
+        if ($null -eq $ManifestEntry) {
+            throw "AppxManifest.xml was not found inside the MSIX."
+        }
+
+        $Stream = $ManifestEntry.Open()
+        $Reader = New-Object System.IO.StreamReader($Stream)
+
+        try {
+            $ManifestText = $Reader.ReadToEnd()
+        }
+        finally {
+            $Reader.Dispose()
+            $Stream.Dispose()
+        }
+    }
+    finally {
+        $Archive.Dispose()
+    }
+
+    $IdentityMatch = [regex]::Match(
+        $ManifestText,
+        '<Identity\s+[^>]*Name="([^"]+)"'
+    )
+
+    if (!$IdentityMatch.Success) {
+        throw "Could not read the Identity Name from AppxManifest.xml."
+    }
+
+    return $IdentityMatch.Groups[1].Value
+}
+
+
+function Get-MatchingPackages {
+    param(
+        [string]$IdentityName
+    )
+
+    $Packages = @(Get-AppxPackage -ErrorAction SilentlyContinue)
+    $Matches = @()
+
+    foreach ($Package in $Packages) {
+        $NameMatches = $Package.Name -eq $IdentityName
+
+        $FullNameMatches = $false
+
+        if ($Package.PackageFullName) {
+            $FullNameMatches = $Package.PackageFullName.StartsWith(
+                $IdentityName + "_",
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+        }
+
+        $FamilyMatches = $false
+
+        if ($Package.PackageFamilyName) {
+            $FamilyMatches = $Package.PackageFamilyName.StartsWith(
+                $IdentityName + "_",
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+        }
+
+        if (
+            $NameMatches -or
+            $FullNameMatches -or
+            $FamilyMatches
+        ) {
+            $Matches += $Package
+        }
+    }
+
+    return $Matches
+}
+
 
 function Write-Log {
     param(
@@ -90,6 +177,21 @@ if (!(Test-Path -LiteralPath $CertificatePath)) {
 }
 
 try {
+    $PackageName = Get-PackageIdentityName -MsixPath $PackagePath
+    Write-Log -Text ("MSIX identity name: " + $PackageName)
+
+    if ($PackageName -ne $ExpectedPackageName) {
+        Write-Log -Text (
+            "NOTE: package identity differs from the historical expected name: "
+            + $ExpectedPackageName
+        )
+    }
+}
+catch {
+    Fail -Step "reading MSIX package identity" -ErrorObject $_
+}
+
+try {
     $Certificate = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList $CertificatePath
 
     Write-Log -Text ("Certificate subject: " + $Certificate.Subject)
@@ -113,10 +215,15 @@ catch {
 }
 
 try {
-    $ExistingPackages = @(Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue)
+    $ExistingPackages = @(
+        Get-MatchingPackages -IdentityName $PackageName
+    )
 
     foreach ($ExistingPackage in $ExistingPackages) {
-        Write-Log -Text ("Removing existing package: " + $ExistingPackage.PackageFullName)
+        Write-Log -Text (
+            "Removing existing package: "
+            + $ExistingPackage.PackageFullName
+        )
 
         Remove-AppxPackage `
             -Package $ExistingPackage.PackageFullName `
@@ -136,13 +243,60 @@ try {
         -ForceApplicationShutdown `
         -ErrorAction Stop
 
-    $RegisteredPackage = Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue | Select-Object -First 1
+    $RegisteredPackage = $null
 
-    if ($null -eq $RegisteredPackage) {
-        throw "Add-AppxPackage completed but the package is not registered for the current user."
+    for ($Attempt = 1; $Attempt -le 20; $Attempt++) {
+        $RegisteredPackage = @(
+            Get-MatchingPackages -IdentityName $PackageName
+        ) | Select-Object -First 1
+
+        if ($null -ne $RegisteredPackage) {
+            break
+        }
+
+        Start-Sleep -Milliseconds 250
     }
 
-    Write-Log -Text ("Registered package: " + $RegisteredPackage.PackageFullName)
+    if ($null -eq $RegisteredPackage) {
+        Write-Log -Text (
+            "Package verification still failed after Add-AppxPackage. "
+            + "Dumping current-user UwUConverter-like packages:"
+        )
+
+        $Candidates = @(
+            Get-AppxPackage -ErrorAction SilentlyContinue |
+                Where-Object {
+                    ($_.Name -like "*UwUConverter*") -or
+                    ($_.PackageFullName -like "*UwUConverter*") -or
+                    ($_.PackageFamilyName -like "*UwUConverter*")
+                }
+        )
+
+        if ($Candidates.Count -eq 0) {
+            Write-Log -Text "No UwUConverter-like AppX packages were visible to the current user."
+        }
+
+        foreach ($Candidate in $Candidates) {
+            Write-Log -Text (
+                "Candidate package: Name="
+                + $Candidate.Name
+                + "; FullName="
+                + $Candidate.PackageFullName
+                + "; Family="
+                + $Candidate.PackageFamilyName
+            )
+        }
+
+        throw (
+            "Add-AppxPackage returned without an error, but the package "
+            + "could not be found for the current user after waiting 5 seconds."
+        )
+    }
+
+    Write-Log -Text (
+        "Registered package: "
+        + $RegisteredPackage.PackageFullName
+    )
 
     $SystemFileAssociations = "Registry::HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations"
 
