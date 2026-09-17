@@ -5,7 +5,6 @@ from tkinter import messagebox
 
 import av
 
-import platform_menu
 from archive_progress_ui import (
     show_create_archive_progress,
     show_extract_archives_progress,
@@ -728,9 +727,23 @@ if __name__ == "__main__":
         and sys.argv[1] == "--uninstall"
     )
 
+    is_setting_up_integrations = (
+        len(sys.argv) > 1
+        and sys.argv[1] == "--setup-integrations"
+    )
+
     try:
         if is_uninstalling:
+            import platform_menu
+
             platform_menu.RemoveExtensions(
+                file_types
+            )
+
+        elif is_setting_up_integrations:
+            import platform_menu
+
+            platform_menu.CreateExtensions(
                 file_types
             )
 
@@ -758,9 +771,9 @@ if __name__ == "__main__":
             )
 
         else:
-            platform_menu.CreateExtensions(
-                file_types
-            )
+            # Opening the executable without an operation must not mutate
+            # Explorer/browser integration. Integration setup is installer-only.
+            raise SystemExit
 
     except Exception:
         error_text = traceback.format_exc()

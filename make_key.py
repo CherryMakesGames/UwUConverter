@@ -1,6 +1,5 @@
 import os
 import shutil
-import subprocess
 import sys
 import winreg as reg
 
@@ -46,152 +45,17 @@ saved_icon = os.path.join(
 icon_value = f'"{saved_icon}",0'
 
 
-MODERN_SHELL_SETTINGS_PATH = (
-    "Software\\Pink Sakura Studios\\UwUConverter"
-)
-
-MODERN_SHELL_REGISTERED_VALUE = (
-    "ModernShellRegistered"
-)
-
-
 def IsWindows11OrLater():
     try:
         version = sys.getwindowsversion()
+
         return (
             version.major >= 10
             and version.build >= 22000
         )
+
     except AttributeError:
         return False
-
-
-def _WriteModernShellMarker(
-    registered,
-):
-    try:
-        with reg.CreateKey(
-            reg.HKEY_CURRENT_USER,
-            MODERN_SHELL_SETTINGS_PATH
-        ) as key:
-            reg.SetValueEx(
-                key,
-                MODERN_SHELL_REGISTERED_VALUE,
-                0,
-                reg.REG_DWORD,
-                1 if registered else 0
-            )
-    except OSError:
-        pass
-
-
-def _DetectModernShellPackage():
-    if os.name != "nt":
-        return False
-
-    powershell = os.path.join(
-        os.environ.get(
-            "SystemRoot",
-            r"C:\Windows"
-        ),
-        "System32",
-        "WindowsPowerShell",
-        "v1.0",
-        "powershell.exe"
-    )
-
-    if not os.path.isfile(
-        powershell
-    ):
-        return False
-
-    command = (
-        "$package = Get-AppxPackage "
-        "-Name 'CherryMakesGames.UwUConverterShell' "
-        "-ErrorAction SilentlyContinue | "
-        "Select-Object -First 1; "
-        "if ($null -ne $package) { "
-        "Write-Output 'REGISTERED' "
-        "}"
-    )
-
-    try:
-        result = subprocess.run(
-            [
-                powershell,
-                "-NoLogo",
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                command,
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=8,
-            check=False,
-            creationflags=(
-                getattr(
-                    subprocess,
-                    "CREATE_NO_WINDOW",
-                    0
-                )
-            ),
-        )
-
-        return (
-            result.returncode == 0
-            and "REGISTERED"
-            in result.stdout
-        )
-
-    except (
-        OSError,
-        subprocess.TimeoutExpired,
-    ):
-        return False
-
-
-def IsModernShellRegistered():
-    if not IsWindows11OrLater():
-        return False
-
-    try:
-        with reg.OpenKey(
-            reg.HKEY_CURRENT_USER,
-            MODERN_SHELL_SETTINGS_PATH,
-            0,
-            reg.KEY_READ
-        ) as key:
-            value, _value_type = reg.QueryValueEx(
-                key,
-                MODERN_SHELL_REGISTERED_VALUE
-            )
-
-        if int(value) == 1:
-            return True
-
-    except (
-        FileNotFoundError,
-        OSError,
-        TypeError,
-        ValueError,
-    ):
-        pass
-
-    # Older/test builds could have the modern AppX package registered while
-    # the marker was missing or stale. Detect the actual package once, repair
-    # the marker, and avoid recreating the old static registry menu.
-    registered = (
-        _DetectModernShellPackage()
-    )
-
-    if registered:
-        _WriteModernShellMarker(
-            True
-        )
-
-    return registered
 
 
 def FindPythonw():
@@ -258,24 +122,17 @@ def SaveIcon():
 def CreateExtensions(file_types):
     SaveIcon()
 
-    # Remove stale classic/static UwUConverter verbs first. Windows 11 can
-    # surface these in the modern menu too, creating a duplicate root beside
-    # the IExplorerCommand extension.
-    for extension in file_types:
-        ResetExtension(
-            extension
-        )
+    # Always clean old/static verbs first.
+    CleanupLegacyMenus()
 
-    ResetFolderMenu()
-    ResetArchiveMenus()
-    ResetZipSelectionMenu()
-
-    # When the modern Windows 11 shell package is registered, do not recreate
-    # the classic verbs. If modern registration fails, this marker is absent
-    # and the classic menus remain the fallback.
-    if IsModernShellRegistered():
+    # Windows 11 uses only the native IExplorerCommand implementation.
+    # Do not create a classic fallback here because Windows 11 can surface
+    # both registrations in the same modern menu, which causes the split
+    # "Archive With UwUConverter" + "UwUConverter" entries.
+    if IsWindows11OrLater():
         return
 
+    # Windows 10 keeps the classic registry menus.
     for extension, conversions in file_types.items():
         if conversions:
             AddExtension(
@@ -350,6 +207,73 @@ def ResetZipSelectionMenu():
         reg.HKEY_CURRENT_USER,
         ZIP_SELECTION_MENU_PATH
     )
+
+
+def CleanupLegacyMenus():
+    # Clean every old UwUConverter registry verb we have ever created.
+    # Enumerating SystemFileAssociations catches stale extensions that are no
+    # longer present in file_types.py.
+    associations_path = (
+        "Software\\Classes\\SystemFileAssociations"
+    )
+
+    try:
+        with reg.OpenKey(
+            reg.HKEY_CURRENT_USER,
+            associations_path,
+            0,
+            reg.KEY_READ,
+        ) as associations:
+            extension_names = []
+            index = 0
+
+            while True:
+                try:
+                    extension_names.append(
+                        reg.EnumKey(
+                            associations,
+                            index,
+                        )
+                    )
+                    index += 1
+
+                except OSError:
+                    break
+
+        for extension_name in extension_names:
+            base = (
+                associations_path
+                + "\\"
+                + extension_name
+                + "\\shell\\"
+            )
+
+            DeleteTree(
+                reg.HKEY_CURRENT_USER,
+                base + "UwUConverter",
+            )
+            DeleteTree(
+                reg.HKEY_CURRENT_USER,
+                base + "UwUConverterExtract",
+            )
+
+    except FileNotFoundError:
+        pass
+
+    # Current and older folder/global registrations.
+    legacy_literal_keys = [
+        FOLDER_MENU_PATH,
+        ZIP_SELECTION_MENU_PATH,
+        "Software\\Classes\\*\\shell\\UwUConverter",
+        "Software\\Classes\\*\\shell\\UwUConverterExtract",
+        "Software\\Classes\\Directory\\shell\\UwUConverterExtract",
+    ]
+
+    for key_path in legacy_literal_keys:
+        DeleteTree(
+            reg.HKEY_CURRENT_USER,
+            key_path,
+        )
 
 
 def command_string(convert_type):
@@ -822,12 +746,7 @@ def AddArchiveMenus():
 
 
 def RemoveExtensions(file_types):
-    for extension in file_types:
-        ResetExtension(extension)
-
-    ResetFolderMenu()
-    ResetArchiveMenus()
-    ResetZipSelectionMenu()
+    CleanupLegacyMenus()
 
     if os.path.isfile(saved_icon):
         os.remove(saved_icon)

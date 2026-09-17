@@ -22,11 +22,19 @@ def get_output_path(file_path, suffix):
     return str(path.with_name(path.stem + suffix + path.suffix.lower()))
 
 
-def compress_video_lossless(file_path):
+def compress_video_lossless(
+    file_path,
+    output_file_path=None,
+):
     import av
     from video_converter import remux
 
-    output_file_path = get_output_path(file_path, "_lossless")
+    if output_file_path is None:
+        output_file_path = get_output_path(
+            file_path,
+            "_lossless",
+        )
+
     input_container = av.open(file_path)
     output_container = av.open(output_file_path, "w")
     try:
@@ -37,14 +45,23 @@ def compress_video_lossless(file_path):
     return output_file_path
 
 
-def compress_video_by_percent(file_path, percent):
+def compress_video_by_percent(
+    file_path,
+    percent,
+    output_file_path=None,
+):
     import av
 
     if not 1 <= percent <= 99:
         raise ValueError("Video compression percent must be between 1 and 99")
 
     target_fraction = 1.0 - (percent / 100.0)
-    output_file_path = get_output_path(file_path, f"_compressed_{percent}")
+    if output_file_path is None:
+        output_file_path = get_output_path(
+            file_path,
+            f"_compressed_{percent}",
+        )
+
     original_size = os.path.getsize(file_path)
     target_size = max(int(original_size * target_fraction), 256000)
 
@@ -179,10 +196,21 @@ def encode_video_to_bitrate(
         output_container.close()
 
 
-def compress_image_lossless(file_path):
+def compress_image_lossless(
+    file_path,
+    output_file_path=None,
+):
     extension = pathlib.Path(file_path).suffix.lower()
-    output_file_path = get_output_path(file_path, "_lossless")
-    image = open_image_safely(file_path)
+
+    if output_file_path is None:
+        output_file_path = get_output_path(
+            file_path,
+            "_lossless",
+        )
+
+    image = open_image_safely(
+        file_path
+    )
 
     try:
         if extension in (".jpg", ".jpeg"):
@@ -204,12 +232,22 @@ def compress_image_lossless(file_path):
     return output_file_path
 
 
-def compress_image_by_percent(file_path, percent):
+def compress_image_by_percent(
+    file_path,
+    percent,
+    output_file_path=None,
+):
     if not 1 <= percent <= 99:
         raise ValueError("Image compression percent must be between 1 and 99")
 
     extension = pathlib.Path(file_path).suffix.lower()
-    output_file_path = get_output_path(file_path, f"_compressed_{percent}")
+
+    if output_file_path is None:
+        output_file_path = get_output_path(
+            file_path,
+            f"_compressed_{percent}",
+        )
+
     target_fraction = 1.0 - (percent / 100.0)
     target_size = max(int(os.path.getsize(file_path) * target_fraction), 1024)
     image = open_image_safely(file_path)

@@ -297,6 +297,9 @@ HRESULT LaunchAction(
 
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESHOWWINDOW;
+    startup.wShowWindow = SW_HIDE;
+
     PROCESS_INFORMATION process{};
 
     BOOL created = CreateProcessW(
@@ -305,7 +308,7 @@ HRESULT LaunchAction(
         nullptr,
         nullptr,
         FALSE,
-        CREATE_UNICODE_ENVIRONMENT,
+        CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW,
         nullptr,
         AppDirectory().c_str(),
         &startup,

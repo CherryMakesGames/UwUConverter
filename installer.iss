@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "0.11"
+#define MyAppVersion "3.1"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -43,7 +43,7 @@ Source: "dist-browser-host\UwUConverterBrowserHost.exe"; DestDir: "{app}"; DestN
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "UwUConverterUpdater"; ValueData: """{app}\UwUConverterUpdater.exe"" --auto"; Flags: uninsdeletevalue
 
 [Run]
-Filename: "{app}\UwUConverter.exe"; Parameters: ""; Flags: runhidden waituntilterminated postinstall skipifsilent
+Filename: "{app}\UwUConverter.exe"; Parameters: "--setup-integrations"; Flags: runhidden waituntilterminated postinstall skipifsilent
 
 
 Filename: "{app}\UwUConverterUpdater.exe"; Parameters: "--auto"; Flags: runhidden nowait postinstall skipifsilent skipifdoesntexist
@@ -54,6 +54,9 @@ Filename: "{app}\UwUConverter.exe"; Parameters: "--uninstall"; Flags: runhidden 
 [Code]
 var
   BrowserPage: TInputOptionWizardPage;
+  BrowserGuidePage: TWizardPage;
+  BrowserGuideMemo: TNewMemo;
+  BrowserGuideIntro: TNewStaticText;
   ChromeIndex: Integer;
   ChromiumIndex: Integer;
   EdgeIndex: Integer;
@@ -180,6 +183,38 @@ begin
   AddBrowserChoice('Brave', FindBrave(), BraveIndex);
   AddBrowserChoice('Vivaldi', FindVivaldi(), VivaldiIndex);
   AddBrowserChoice('Firefox', FindFirefox(), FirefoxIndex);
+
+  BrowserGuidePage := CreateCustomPage(
+    BrowserPage.ID,
+    'Install the browser extension',
+    'Complete this browser step after UwUConverter is installed'
+  );
+
+  BrowserGuideIntro := TNewStaticText.Create(WizardForm);
+  BrowserGuideIntro.Parent := BrowserGuidePage.Surface;
+  BrowserGuideIntro.Left := 0;
+  BrowserGuideIntro.Top := 0;
+  BrowserGuideIntro.Width := BrowserGuidePage.SurfaceWidth;
+  BrowserGuideIntro.AutoSize := False;
+  BrowserGuideIntro.Height := ScaleY(42);
+  BrowserGuideIntro.WordWrap := True;
+  BrowserGuideIntro.Caption :=
+    'Keep this page open while installing. After Setup copies the files, '
+    + 'it will open the selected browser extension page and extension folder '
+    + 'for you.';
+
+  BrowserGuideMemo := TNewMemo.Create(WizardForm);
+  BrowserGuideMemo.Parent := BrowserGuidePage.Surface;
+  BrowserGuideMemo.Left := 0;
+  BrowserGuideMemo.Top := BrowserGuideIntro.Top + BrowserGuideIntro.Height + ScaleY(8);
+  BrowserGuideMemo.Width := BrowserGuidePage.SurfaceWidth;
+  BrowserGuideMemo.Height :=
+    BrowserGuidePage.SurfaceHeight - BrowserGuideMemo.Top;
+  BrowserGuideMemo.ReadOnly := True;
+  BrowserGuideMemo.ScrollBars := ssVertical;
+  BrowserGuideMemo.WordWrap := True;
+
+  UpdateBrowserGuide();
 end;
 
 
@@ -189,10 +224,162 @@ begin
 end;
 
 
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if Assigned(BrowserGuidePage) and
+     (CurPageID = BrowserGuidePage.ID) then
+  begin
+    UpdateBrowserGuide();
+  end;
+end;
+
+
 function BrowserSelected(BrowserIndex: Integer): Boolean;
 begin
   Result := (BrowserIndex >= 0) and BrowserPage.Values[BrowserIndex];
 end;
+
+function AnyChromiumBrowserSelected(): Boolean;
+begin
+  Result :=
+    BrowserSelected(ChromeIndex) or
+    BrowserSelected(ChromiumIndex) or
+    BrowserSelected(EdgeIndex) or
+    BrowserSelected(OperaIndex) or
+    BrowserSelected(OperaGXIndex) or
+    BrowserSelected(BraveIndex) or
+    BrowserSelected(VivaldiIndex);
+end;
+
+function AnyBrowserSelected(): Boolean;
+begin
+  Result :=
+    AnyChromiumBrowserSelected() or
+    BrowserSelected(FirefoxIndex);
+end;
+
+function SelectedBrowserNames(): String;
+begin
+  Result := '';
+
+  if BrowserSelected(ChromeIndex) then
+    Result := Result + 'Google Chrome, ';
+
+  if BrowserSelected(ChromiumIndex) then
+    Result := Result + 'Chromium, ';
+
+  if BrowserSelected(EdgeIndex) then
+    Result := Result + 'Microsoft Edge, ';
+
+  if BrowserSelected(OperaIndex) then
+    Result := Result + 'Opera, ';
+
+  if BrowserSelected(OperaGXIndex) then
+    Result := Result + 'Opera GX, ';
+
+  if BrowserSelected(BraveIndex) then
+    Result := Result + 'Brave, ';
+
+  if BrowserSelected(VivaldiIndex) then
+    Result := Result + 'Vivaldi, ';
+
+  if BrowserSelected(FirefoxIndex) then
+    Result := Result + 'Firefox, ';
+
+  if Length(Result) >= 2 then
+    Delete(Result, Length(Result) - 1, 2);
+end;
+
+function BuildBrowserGuide(): String;
+var
+  ChromiumFolder: String;
+  FirefoxManifest: String;
+begin
+  ChromiumFolder :=
+    ExpandConstant('{app}\browser-extension\chromium');
+
+  FirefoxManifest :=
+    ExpandConstant('{app}\browser-extension\firefox\manifest.json');
+
+  Result :=
+    'Browser extensions require one manual confirmation inside the browser. '
+    + 'This is a browser security restriction; UwUConverter cannot click '
+    + '"Load unpacked" or "Load Temporary Add-on" for you.'
+    + #13#10 + #13#10;
+
+  if not AnyBrowserSelected() then
+  begin
+    Result := Result
+      + 'No browsers are selected.'
+      + #13#10 + #13#10
+      + 'Click Back and select the browsers where you want UwUConverter, '
+      + 'or continue without installing a browser extension.';
+    exit;
+  end;
+
+  Result := Result
+    + 'Selected: ' + SelectedBrowserNames()
+    + #13#10 + #13#10;
+
+  if AnyChromiumBrowserSelected() then
+  begin
+    Result := Result
+      + 'CHROME / CHROMIUM / EDGE / OPERA / OPERA GX / BRAVE / VIVALDI'
+      + #13#10
+      + '1. Finish the UwUConverter installer.'
+      + #13#10
+      + '2. Setup will open the browser Extensions page and this folder:'
+      + #13#10
+      + '   ' + ChromiumFolder
+      + #13#10
+      + '3. Turn on Developer mode on the Extensions page.'
+      + #13#10
+      + '4. Click "Load unpacked".'
+      + #13#10
+      + '5. Select the chromium folder shown above.'
+      + #13#10
+      + '6. UwUConverter should then appear when you right-click an image '
+      + 'inside the browser.'
+      + #13#10 + #13#10;
+  end;
+
+  if BrowserSelected(FirefoxIndex) then
+  begin
+    Result := Result
+      + 'FIREFOX'
+      + #13#10
+      + '1. Finish the UwUConverter installer.'
+      + #13#10
+      + '2. Setup will open about:debugging > This Firefox.'
+      + #13#10
+      + '3. Click "Load Temporary Add-on...".'
+      + #13#10
+      + '4. Select:'
+      + #13#10
+      + '   ' + FirefoxManifest
+      + #13#10
+      + '5. UwUConverter should then appear when you right-click an image.'
+      + #13#10 + #13#10
+      + 'Note: this Firefox installation method is temporary until the '
+      + 'extension is published/signed; Firefox may require loading it again '
+      + 'after restarting the browser.'
+      + #13#10 + #13#10;
+  end;
+
+  Result := Result
+    + 'The native UwUConverter browser host is installed automatically. '
+    + 'You only need to complete the browser-side extension step above.';
+end;
+
+procedure UpdateBrowserGuide();
+begin
+  if Assigned(BrowserGuideMemo) then
+  begin
+    BrowserGuideMemo.Lines.Text :=
+      BuildBrowserGuide();
+  end;
+end;
+
 
 procedure LaunchBrowser(ExecutablePath, TargetUrl: String);
 var

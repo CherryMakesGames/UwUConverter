@@ -6,19 +6,22 @@ param(
 $ErrorActionPreference = "Stop"
 
 $PackageName = "CherryMakesGames.UwUConverterShell"
-$ModernDir = Join-Path $InstallDir "modern-shell"
-$PackagePath = Join-Path $ModernDir "UwUConverterShell.msix"
-$CertificatePath = Join-Path $ModernDir "UwUConverterShell.cer"
-$CertificateState = Join-Path $ModernDir "trusted_dev_cert_thumbprint.txt"
-$LogPath = Join-Path $ModernDir "registration.log"
-$SettingsPath = "HKCU:\\Software\\Pink Sakura Studios\\UwUConverter"
+$ModernDir = Join-Path -Path $InstallDir -ChildPath "modern-shell"
+$PackagePath = Join-Path -Path $ModernDir -ChildPath "UwUConverterShell.msix"
+$CertificatePath = Join-Path -Path $ModernDir -ChildPath "UwUConverterShell.cer"
+$CertificateState = Join-Path -Path $ModernDir -ChildPath "trusted_dev_cert_thumbprint.txt"
+$LogPath = Join-Path -Path $ModernDir -ChildPath "registration.log"
+$SettingsPath = "HKCU:\Software\Pink Sakura Studios\UwUConverter"
 $ModernShellValue = "ModernShellRegistered"
 
 function Write-Log {
-    param([string]$Text)
+    param(
+        [string]$Text
+    )
 
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
-    Add-Content -Path $LogPath -Value ("[{0}] {1}" -f $Timestamp, $Text) -Encoding UTF8
+    $Line = "[{0}] {1}" -f $Timestamp, $Text
+    Add-Content -Path $LogPath -Value $Line -Encoding UTF8
 }
 
 function Fail {
@@ -28,38 +31,60 @@ function Fail {
     )
 
     $Message = [string]$ErrorObject.Exception.Message
-    $HResult = "0x{0:X8}" -f ($ErrorObject.Exception.HResult -band 0xFFFFFFFF)
+    $HResultValue = $ErrorObject.Exception.HResult -band 0xFFFFFFFF
+    $HResult = "0x{0:X8}" -f $HResultValue
 
-    Write-Log ("FAILED STEP: " + $Step)
-    Write-Log ("HRESULT: " + $HResult)
-    Write-Log ("MESSAGE: " + $Message)
+    Write-Log -Text ("FAILED STEP: " + $Step)
+    Write-Log -Text ("HRESULT: " + $HResult)
+    Write-Log -Text ("MESSAGE: " + $Message)
 
     Write-Error ("UwUConverter modern shell registration failed during " + $Step + ". " + $HResult + ": " + $Message)
     exit 1
 }
 
-New-Item -Path $SettingsPath -Force | Out-Null
-Set-ItemProperty `
-    -Path $SettingsPath `
-    -Name $ModernShellValue `
-    -Type DWord `
-    -Value 0 `
-    -Force
+try {
+    New-Item -Path $SettingsPath -Force | Out-Null
 
-Write-Log "PowerShell registration script started."
-Write-Log ("PowerShell version: " + $PSVersionTable.PSVersion.ToString())
-Write-Log ("InstallDir: " + $InstallDir)
-Write-Log ("PackagePath: " + $PackagePath)
-Write-Log ("CertificatePath: " + $CertificatePath)
+    New-ItemProperty `
+        -Path $SettingsPath `
+        -Name $ModernShellValue `
+        -PropertyType DWord `
+        -Value 0 `
+        -Force |
+        Out-Null
+}
+catch {
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+    $InitError = [string]$_.Exception.Message
+
+    Add-Content `
+        -Path $LogPath `
+        -Value ("[" + $Timestamp + "] FAILED STEP: initialize ModernShellRegistered marker") `
+        -Encoding UTF8
+
+    Add-Content `
+        -Path $LogPath `
+        -Value ("[" + $Timestamp + "] MESSAGE: " + $InitError) `
+        -Encoding UTF8
+
+    exit 1
+}
+
+Write-Log -Text "PowerShell registration script started."
+Write-Log -Text "ModernShellRegistered marker initialized successfully."
+Write-Log -Text ("PowerShell version: " + $PSVersionTable.PSVersion.ToString())
+Write-Log -Text ("InstallDir: " + $InstallDir)
+Write-Log -Text ("PackagePath: " + $PackagePath)
+Write-Log -Text ("CertificatePath: " + $CertificatePath)
 
 if (!(Test-Path -LiteralPath $PackagePath)) {
-    Write-Log "Package file does not exist."
+    Write-Log -Text "Package file does not exist."
     Write-Error ("Modern shell package was not found: " + $PackagePath)
     exit 1
 }
 
 if (!(Test-Path -LiteralPath $CertificatePath)) {
-    Write-Log "Certificate file does not exist."
+    Write-Log -Text "Certificate file does not exist."
     Write-Error ("Modern shell certificate was not found: " + $CertificatePath)
     exit 1
 }
@@ -67,37 +92,43 @@ if (!(Test-Path -LiteralPath $CertificatePath)) {
 try {
     $Certificate = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList $CertificatePath
 
-    Write-Log ("Certificate subject: " + $Certificate.Subject)
-    Write-Log ("Certificate thumbprint: " + $Certificate.Thumbprint)
+    Write-Log -Text ("Certificate subject: " + $Certificate.Subject)
+    Write-Log -Text ("Certificate thumbprint: " + $Certificate.Thumbprint)
 
     $MachineCertificatePath = "Cert:\LocalMachine\TrustedPeople\" + $Certificate.Thumbprint
 
-    if (!(Test-Path $MachineCertificatePath)) {
+    if (!(Test-Path -LiteralPath $MachineCertificatePath)) {
         throw "The package signing certificate is not present in LocalMachine\TrustedPeople after the installer trust step."
     }
 
-    Write-Log "Certificate trust verified in LocalMachine\TrustedPeople."
+    Write-Log -Text "Certificate trust verified in LocalMachine\TrustedPeople."
 
-    Set-Content -LiteralPath $CertificateState -Value $Certificate.Thumbprint -Encoding ASCII
+    Set-Content `
+        -LiteralPath $CertificateState `
+        -Value $Certificate.Thumbprint `
+        -Encoding ASCII
 }
 catch {
-    Fail "verifying package certificate trust" $_
+    Fail -Step "verifying package certificate trust" -ErrorObject $_
 }
 
 try {
     $ExistingPackages = @(Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue)
 
     foreach ($ExistingPackage in $ExistingPackages) {
-        Write-Log ("Removing existing package: " + $ExistingPackage.PackageFullName)
-        Remove-AppxPackage -Package $ExistingPackage.PackageFullName -ErrorAction Stop
+        Write-Log -Text ("Removing existing package: " + $ExistingPackage.PackageFullName)
+
+        Remove-AppxPackage `
+            -Package $ExistingPackage.PackageFullName `
+            -ErrorAction Stop
     }
 }
 catch {
-    Fail "removing previous package" $_
+    Fail -Step "removing previous package" -ErrorObject $_
 }
 
 try {
-    Write-Log "Calling Add-AppxPackage."
+    Write-Log -Text "Calling Add-AppxPackage."
 
     Add-AppxPackage `
         -Path $PackagePath `
@@ -105,65 +136,47 @@ try {
         -ForceApplicationShutdown `
         -ErrorAction Stop
 
-    $RegisteredPackage = Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue
+    $RegisteredPackage = Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue | Select-Object -First 1
 
-    if (!$RegisteredPackage) {
+    if ($null -eq $RegisteredPackage) {
         throw "Add-AppxPackage completed but the package is not registered for the current user."
     }
 
-    Write-Log ("Registered package: " + $RegisteredPackage.PackageFullName)
+    Write-Log -Text ("Registered package: " + $RegisteredPackage.PackageFullName)
 
-    # Windows 11 can surface the old static registry verbs in the modern
-    # context menu, producing a second UwUConverter root. Enumerate the actual
-    # SystemFileAssociations children and remove our exact keys literally.
-    # This is more reliable than a wildcard Registry-provider path.
-    $SystemFileAssociations = (
-        "Registry::HKEY_CURRENT_USER"
-        + "\Software\Classes\SystemFileAssociations"
-    )
+    $SystemFileAssociations = "Registry::HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations"
 
     if (Test-Path -LiteralPath $SystemFileAssociations) {
-        Get-ChildItem `
-            -LiteralPath $SystemFileAssociations `
-            -ErrorAction SilentlyContinue |
-            ForEach-Object {
-                $ConversionKey = Join-Path `
-                    $_.PSPath `
-                    "shell\UwUConverter"
+        $AssociationKeys = Get-ChildItem -LiteralPath $SystemFileAssociations -ErrorAction SilentlyContinue
 
-                $ArchiveKey = Join-Path `
-                    $_.PSPath `
-                    "shell\UwUConverterExtract"
+        foreach ($AssociationKey in $AssociationKeys) {
+            $ConversionKey = Join-Path -Path $AssociationKey.PSPath -ChildPath "shell\UwUConverter"
+            $ArchiveKey = Join-Path -Path $AssociationKey.PSPath -ChildPath "shell\UwUConverterExtract"
 
-                if (Test-Path -LiteralPath $ConversionKey) {
-                    Remove-Item `
-                        -LiteralPath $ConversionKey `
-                        -Recurse `
-                        -Force `
-                        -ErrorAction SilentlyContinue
-                }
-
-                if (Test-Path -LiteralPath $ArchiveKey) {
-                    Remove-Item `
-                        -LiteralPath $ArchiveKey `
-                        -Recurse `
-                        -Force `
-                        -ErrorAction SilentlyContinue
-                }
+            if (Test-Path -LiteralPath $ConversionKey) {
+                Remove-Item `
+                    -LiteralPath $ConversionKey `
+                    -Recurse `
+                    -Force `
+                    -ErrorAction SilentlyContinue
             }
+
+            if (Test-Path -LiteralPath $ArchiveKey) {
+                Remove-Item `
+                    -LiteralPath $ArchiveKey `
+                    -Recurse `
+                    -Force `
+                    -ErrorAction SilentlyContinue
+            }
+        }
     }
 
     $LegacyLiteralKeys = @(
-        (
-            "Registry::HKEY_CURRENT_USER"
-            + "\Software\Classes\Directory"
-            + "\shell\UwUConverter"
-        ),
-        (
-            "Registry::HKEY_CURRENT_USER"
-            + "\Software\Classes\AllFilesystemObjects"
-            + "\shell\UwUConverterZipSelection"
-        )
+        "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\UwUConverter",
+        "Registry::HKEY_CURRENT_USER\Software\Classes\Directory\shell\UwUConverterExtract",
+        "Registry::HKEY_CURRENT_USER\Software\Classes\AllFilesystemObjects\shell\UwUConverterZipSelection",
+        "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\UwUConverter",
+        "Registry::HKEY_CURRENT_USER\Software\Classes\*\shell\UwUConverterExtract"
     )
 
     foreach ($LegacyKey in $LegacyLiteralKeys) {
@@ -176,19 +189,20 @@ try {
         }
     }
 
-    Set-ItemProperty `
+    New-ItemProperty `
         -Path $SettingsPath `
         -Name $ModernShellValue `
-        -Type DWord `
+        -PropertyType DWord `
         -Value 1 `
-        -Force
+        -Force |
+        Out-Null
 
-    Write-Log "Removed legacy duplicate context-menu registrations using literal enumeration."
-    Write-Log "ModernShellRegistered=1"
-    Write-Log "SUCCESS"
+    Write-Log -Text "Removed legacy duplicate context-menu registrations."
+    Write-Log -Text "ModernShellRegistered=1"
+    Write-Log -Text "SUCCESS"
 }
 catch {
-    Fail "Add-AppxPackage" $_
+    Fail -Step "Add-AppxPackage / legacy menu cleanup" -ErrorObject $_
 }
 
 exit 0
