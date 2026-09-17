@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "0.11"
+#define MyAppVersion "3.1"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -215,10 +215,12 @@ var
   FirefoxManifest: String;
 begin
   ChromiumFolder :=
-    ExpandConstant('{app}\browser-extension\chromium');
+    AddBackslash(WizardDirValue())
+    + 'browser-extension\chromium';
 
   FirefoxManifest :=
-    ExpandConstant('{app}\browser-extension\firefox\manifest.json');
+    AddBackslash(WizardDirValue())
+    + 'browser-extension\firefox\manifest.json';
 
   Result :=
     'Browser extensions require one manual confirmation inside the browser. '
@@ -361,7 +363,9 @@ begin
   BrowserGuideMemo.ScrollBars := ssVertical;
   BrowserGuideMemo.WordWrap := True;
 
-  UpdateBrowserGuide();
+  BrowserGuideMemo.Lines.Text :=
+    'Select your browsers on the previous page. '
+    + 'The installation guide will appear here when you continue.';
 end;
 
 
