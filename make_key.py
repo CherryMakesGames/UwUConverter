@@ -132,7 +132,9 @@ def CreateExtensions(file_types):
     if IsWindows11OrLater():
         return
 
-    # Windows 10 keeps the classic registry menus.
+    # Windows 10 keeps the classic registry menus, filtered by user preferences.
+    from settings import filter_file_types, enabled
+    file_types = filter_file_types(file_types)
     for extension, conversions in file_types.items():
         if conversions:
             AddExtension(
@@ -140,8 +142,10 @@ def CreateExtensions(file_types):
                 conversions
             )
 
-    AddFolderMenu()
-    AddArchiveMenus()
+    if enabled("batch") or enabled("archive"):
+        AddFolderMenu()
+    if enabled("archive"):
+        AddArchiveMenus()
 
 
 def DeleteTree(root, key_path):
@@ -525,9 +529,9 @@ def AddExtension(file_type, conversions):
         conversions
     )
 
-    AddZipChildMenu(
-        key_path
-    )
+    from settings import enabled
+    if enabled("archive"):
+        AddZipChildMenu(key_path)
 
 
 def AddFolderMenu():
@@ -564,38 +568,39 @@ def AddFolderMenu():
             "Player"
         )
 
-    batch_path = (
-        FOLDER_MENU_PATH
-        + "\\shell\\01_batch"
-    )
-
-    with reg.CreateKey(
-        reg.HKEY_CURRENT_USER,
-        batch_path
-    ) as item_key:
-        reg.SetValueEx(
-            item_key,
-            "MUIVerb",
-            0,
-            reg.REG_SZ,
-            "Batch Convert Folder..."
+    from settings import enabled
+    if enabled("batch"):
+        batch_path = (
+            FOLDER_MENU_PATH
+            + "\\shell\\01_batch"
         )
-        reg.SetValueEx(
-            item_key,
-            "Icon",
-            0,
-            reg.REG_SZ,
-            icon_value
+    
+        with reg.CreateKey(
+            reg.HKEY_CURRENT_USER,
+            batch_path
+        ) as item_key:
+            reg.SetValueEx(
+                item_key,
+                "MUIVerb",
+                0,
+                reg.REG_SZ,
+                "Batch Convert Folder..."
+            )
+            reg.SetValueEx(
+                item_key,
+                "Icon",
+                0,
+                reg.REG_SZ,
+                icon_value
+            )
+    
+        CreateCommand(
+            batch_path + "\\command",
+            "BATCH_UI_ALL"
         )
-
-    CreateCommand(
-        batch_path + "\\command",
-        "BATCH_UI_ALL"
-    )
-
-    AddZipChildMenu(
-        FOLDER_MENU_PATH
-    )
+    
+    if enabled("archive"):
+        AddZipChildMenu(FOLDER_MENU_PATH)
 
 
 def AddZipSelectionMenu():

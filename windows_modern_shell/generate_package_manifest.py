@@ -12,7 +12,7 @@ ROOT = HERE.parent
 GENERATED = HERE / "generated"
 
 DEFAULT_PUBLISHER = "CN=UwUConverter Shell Extension"
-PACKAGE_NAME = "PinkSakuraStudios.UwUConverterShell"
+PACKAGE_NAME = "CherryMakesGames.UwUConverterShell"
 APPLICATION_ID = "UwUConverter"
 
 

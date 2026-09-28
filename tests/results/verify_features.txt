@@ -1,0 +1,23 @@
+PASS  Python syntax - 35 Python files
+PASS  Linux shell syntax - Linux scripts parse with bash -n
+PASS  CLI parser - 16 command forms
+PASS  CLI formats - all converter categories listed
+PASS  Updater logic - version comparison + platform asset selection
+PASS  Linux updater package extraction - tar.gz package safely locates install.sh
+PASS  Linux updater install/autostart wiring - build package + XDG autostart wiring present
+PASS  Linux install/uninstall runtime - actual temp HOME install + uninstall
+PASS  KDE/Dolphin right-click menus - Dolphin universal mixed-file, folder, and archive menus generated
+PASS  Batch conversion engine - folder/beside/replace/log safety paths
+PASS  Image conversion - PNG -> JPG/JPEG/WEBP/ICO/TIF/TIFF/PDF
+PASS  Image compression - lossless + arbitrary percentage image compression
+PASS  Document conversion - TXT/DOCX/ODT/PDF paths; PDF->DOCX skipped (pdf2docx unavailable)
+PASS  Spreadsheet conversion - CSV/XLSX/ODS/TSV/PDF paths; XLS output skipped (xlwt unavailable)
+PASS  3D model conversion - OBJ -> STL/PLY/GLB
+PASS  Archive manager - wrapper paths with fake 7-Zip (real binary unavailable)
+PASS  Linux 7-Zip bootstrap - private per-user 7zz extraction/install
+SKIP  Audio/video runtime - PyAV unavailable in sandbox: No module named 'av'
+PASS  Batch GUI imports - Tkinter + batch dialog module import
+PASS  Windows structural checks - registry/archive/updater wiring scanned; Windows runtime not available here
+
+Summary: 19 passed, 1 skipped, 0 failed
+Skipped tests require dependencies/platform capabilities unavailable in this environment.

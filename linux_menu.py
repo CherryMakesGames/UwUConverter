@@ -151,6 +151,8 @@ ARCHIVE_MIME_TYPES = [
 ]
 
 def CreateExtensions(file_types):
+    from settings import filter_file_types, enabled
+    file_types = filter_file_types(file_types)
     cleanup_linux_integrations()
 
     # Nautilus/Nemo/Caja currently get the folder batch launcher.
@@ -165,48 +167,46 @@ def CreateExtensions(file_types):
             "Batch Convert With UwUConverter"
         )
 
-        launcher.write_text(
-            build_folder_gui_script(),
-            encoding="utf-8"
-        )
-
-        make_executable(launcher)
+        if enabled("batch"):
+            launcher.write_text(
+                build_folder_gui_script(),
+                encoding="utf-8"
+            )
+            make_executable(launcher)
 
         zip_launcher = app_folder / (
             "Compress Selection to ZIP With UwUConverter"
         )
 
-        zip_launcher.write_text(
-            build_zip_selection_script(),
-            encoding="utf-8"
-        )
-
-        make_executable(
-            zip_launcher
-        )
+        if enabled("archive"):
+            zip_launcher.write_text(
+                build_zip_selection_script(),
+                encoding="utf-8"
+            )
+            make_executable(zip_launcher)
 
         archive_launcher = app_folder / (
             "Open Archive in UwUConverter"
         )
 
-        archive_launcher.write_text(
-            build_archive_open_script(),
-            encoding="utf-8"
-        )
-
-        make_executable(
-            archive_launcher
-        )
+        if enabled("archive"):
+            archive_launcher.write_text(
+                build_archive_open_script(),
+                encoding="utf-8"
+            )
+            make_executable(archive_launcher)
 
         print(
             f"Installed {manager} batch GUI launcher: "
             f"{launcher}"
         )
 
-    create_dolphin_batch_gui_menu()
+    if enabled("batch"):
+        create_dolphin_batch_gui_menu()
     create_dolphin_file_menus(file_types)
-    create_dolphin_archive_menu()
-    create_dolphin_zip_selection_menu()
+    if enabled("archive"):
+        create_dolphin_archive_menu()
+        create_dolphin_zip_selection_menu()
 
     print(
         "Installed Dolphin UwUConverter menus: "

@@ -1,0 +1,8 @@
+UwUConverter Linux 7-Zip subprocess environment test
+
+PASS: Python syntax
+PASS: LD_LIBRARY_PATH is restored from LD_LIBRARY_PATH_ORIG
+PASS: LD_LIBRARY_PATH is removed when no original value exists
+PASS: LD_PRELOAD is removed for external system programs
+PASS: Linux 7-Zip bootstrap uses verified SSL context
+PASS: Linux search prefers 7zz before 7z

@@ -33,6 +33,13 @@ jobs:
           chmod +x ./build_linux.sh
           ./build_linux.sh
 
+      - name: Run UwUConverter 3.2 regression tests
+        shell: bash
+        run: |
+          BUILD_PYTHON=".uwu-build-venv/bin/python"
+          if [ -x ".venv/bin/python" ]; then BUILD_PYTHON=".venv/bin/python"; fi
+          "$BUILD_PYTHON" -m unittest discover -s tests -v
+
       - name: Verify packaged Linux release
         shell: bash
         run: |

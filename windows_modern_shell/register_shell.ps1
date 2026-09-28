@@ -15,6 +15,34 @@ $LogPath = Join-Path -Path $ModernDir -ChildPath "registration.log"
 $SettingsPath = "HKCU:\Software\Pink Sakura Studios\UwUConverter"
 $ModernShellValue = "ModernShellRegistered"
 
+function Write-Log {
+    param(
+        [string]$Text
+    )
+
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+    $Line = "[{0}] {1}" -f $Timestamp, $Text
+    Add-Content -Path $LogPath -Value $Line -Encoding UTF8
+}
+
+function Fail {
+    param(
+        [string]$Step,
+        $ErrorObject
+    )
+
+    $Message = [string]$ErrorObject.Exception.Message
+    $HResultValue = $ErrorObject.Exception.HResult -band 0xFFFFFFFF
+    $HResult = "0x{0:X8}" -f $HResultValue
+
+    Write-Log -Text ("FAILED STEP: " + $Step)
+    Write-Log -Text ("HRESULT: " + $HResult)
+    Write-Log -Text ("MESSAGE: " + $Message)
+
+    Write-Error ("UwUConverter modern shell registration failed during " + $Step + ". " + $HResult + ": " + $Message)
+    exit 1
+}
+
 function Get-PackageIdentityName {
     param(
         [string]$MsixPath
@@ -46,10 +74,8 @@ function Get-PackageIdentityName {
         $Archive.Dispose()
     }
 
-    $IdentityMatch = [regex]::Match(
-        $ManifestText,
-        '<Identity\s+[^>]*Name="([^"]+)"'
-    )
+    $Pattern = '<Identity\s+[^>]*Name="([^"]+)"'
+    $IdentityMatch = [regex]::Match($ManifestText, $Pattern)
 
     if (!$IdentityMatch.Success) {
         throw "Could not read the Identity Name from AppxManifest.xml."
@@ -57,7 +83,6 @@ function Get-PackageIdentityName {
 
     return $IdentityMatch.Groups[1].Value
 }
-
 
 function Get-MatchingPackages {
     param(
@@ -69,30 +94,20 @@ function Get-MatchingPackages {
 
     foreach ($Package in $Packages) {
         $NameMatches = $Package.Name -eq $IdentityName
-
         $FullNameMatches = $false
-
-        if ($Package.PackageFullName) {
-            $FullNameMatches = $Package.PackageFullName.StartsWith(
-                $IdentityName + "_",
-                [System.StringComparison]::OrdinalIgnoreCase
-            )
-        }
-
         $FamilyMatches = $false
 
-        if ($Package.PackageFamilyName) {
-            $FamilyMatches = $Package.PackageFamilyName.StartsWith(
-                $IdentityName + "_",
-                [System.StringComparison]::OrdinalIgnoreCase
-            )
+        if ($Package.PackageFullName) {
+            $Prefix = $IdentityName + "_"
+            $FullNameMatches = $Package.PackageFullName.StartsWith($Prefix, [System.StringComparison]::OrdinalIgnoreCase)
         }
 
-        if (
-            $NameMatches -or
-            $FullNameMatches -or
-            $FamilyMatches
-        ) {
+        if ($Package.PackageFamilyName) {
+            $Prefix = $IdentityName + "_"
+            $FamilyMatches = $Package.PackageFamilyName.StartsWith($Prefix, [System.StringComparison]::OrdinalIgnoreCase)
+        }
+
+        if ($NameMatches -or $FullNameMatches -or $FamilyMatches) {
             $Matches += $Package
         }
     }
@@ -100,60 +115,15 @@ function Get-MatchingPackages {
     return $Matches
 }
 
-
-function Write-Log {
-    param(
-        [string]$Text
-    )
-
-    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
-    $Line = "[{0}] {1}" -f $Timestamp, $Text
-    Add-Content -Path $LogPath -Value $Line -Encoding UTF8
-}
-
-function Fail {
-    param(
-        [string]$Step,
-        $ErrorObject
-    )
-
-    $Message = [string]$ErrorObject.Exception.Message
-    $HResultValue = $ErrorObject.Exception.HResult -band 0xFFFFFFFF
-    $HResult = "0x{0:X8}" -f $HResultValue
-
-    Write-Log -Text ("FAILED STEP: " + $Step)
-    Write-Log -Text ("HRESULT: " + $HResult)
-    Write-Log -Text ("MESSAGE: " + $Message)
-
-    Write-Error ("UwUConverter modern shell registration failed during " + $Step + ". " + $HResult + ": " + $Message)
-    exit 1
-}
-
 try {
     New-Item -Path $SettingsPath -Force | Out-Null
-
-    New-ItemProperty `
-        -Path $SettingsPath `
-        -Name $ModernShellValue `
-        -PropertyType DWord `
-        -Value 0 `
-        -Force |
-        Out-Null
+    New-ItemProperty -Path $SettingsPath -Name $ModernShellValue -PropertyType DWord -Value 0 -Force | Out-Null
 }
 catch {
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
     $InitError = [string]$_.Exception.Message
-
-    Add-Content `
-        -Path $LogPath `
-        -Value ("[" + $Timestamp + "] FAILED STEP: initialize ModernShellRegistered marker") `
-        -Encoding UTF8
-
-    Add-Content `
-        -Path $LogPath `
-        -Value ("[" + $Timestamp + "] MESSAGE: " + $InitError) `
-        -Encoding UTF8
-
+    Add-Content -Path $LogPath -Value ("[" + $Timestamp + "] FAILED STEP: initialize ModernShellRegistered marker") -Encoding UTF8
+    Add-Content -Path $LogPath -Value ("[" + $Timestamp + "] MESSAGE: " + $InitError) -Encoding UTF8
     exit 1
 }
 
@@ -181,10 +151,8 @@ try {
     Write-Log -Text ("MSIX identity name: " + $PackageName)
 
     if ($PackageName -ne $ExpectedPackageName) {
-        Write-Log -Text (
-            "NOTE: package identity differs from the historical expected name: "
-            + $ExpectedPackageName
-        )
+        $Note = "NOTE: package identity differs from the historical expected name: " + $ExpectedPackageName
+        Write-Log -Text $Note
     }
 }
 catch {
@@ -193,7 +161,6 @@ catch {
 
 try {
     $Certificate = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList $CertificatePath
-
     Write-Log -Text ("Certificate subject: " + $Certificate.Subject)
     Write-Log -Text ("Certificate thumbprint: " + $Certificate.Thumbprint)
 
@@ -204,30 +171,19 @@ try {
     }
 
     Write-Log -Text "Certificate trust verified in LocalMachine\TrustedPeople."
-
-    Set-Content `
-        -LiteralPath $CertificateState `
-        -Value $Certificate.Thumbprint `
-        -Encoding ASCII
+    Set-Content -LiteralPath $CertificateState -Value $Certificate.Thumbprint -Encoding ASCII
 }
 catch {
     Fail -Step "verifying package certificate trust" -ErrorObject $_
 }
 
 try {
-    $ExistingPackages = @(
-        Get-MatchingPackages -IdentityName $PackageName
-    )
+    $ExistingPackages = @(Get-MatchingPackages -IdentityName $PackageName)
 
     foreach ($ExistingPackage in $ExistingPackages) {
-        Write-Log -Text (
-            "Removing existing package: "
-            + $ExistingPackage.PackageFullName
-        )
-
-        Remove-AppxPackage `
-            -Package $ExistingPackage.PackageFullName `
-            -ErrorAction Stop
+        $RemovingText = "Removing existing package: " + $ExistingPackage.PackageFullName
+        Write-Log -Text $RemovingText
+        Remove-AppxPackage -Package $ExistingPackage.PackageFullName -ErrorAction Stop
     }
 }
 catch {
@@ -237,18 +193,13 @@ catch {
 try {
     Write-Log -Text "Calling Add-AppxPackage."
 
-    Add-AppxPackage `
-        -Path $PackagePath `
-        -ExternalLocation $InstallDir `
-        -ForceApplicationShutdown `
-        -ErrorAction Stop
+    Add-AppxPackage -Path $PackagePath -ExternalLocation $InstallDir -ForceApplicationShutdown -ErrorAction Stop
 
     $RegisteredPackage = $null
 
     for ($Attempt = 1; $Attempt -le 20; $Attempt++) {
-        $RegisteredPackage = @(
-            Get-MatchingPackages -IdentityName $PackageName
-        ) | Select-Object -First 1
+        $MatchingPackages = @(Get-MatchingPackages -IdentityName $PackageName)
+        $RegisteredPackage = $MatchingPackages | Select-Object -First 1
 
         if ($null -ne $RegisteredPackage) {
             break
@@ -258,45 +209,24 @@ try {
     }
 
     if ($null -eq $RegisteredPackage) {
-        Write-Log -Text (
-            "Package verification still failed after Add-AppxPackage. "
-            + "Dumping current-user UwUConverter-like packages:"
-        )
+        Write-Log -Text "Package verification still failed after Add-AppxPackage. Dumping current-user UwUConverter-like packages:"
 
-        $Candidates = @(
-            Get-AppxPackage -ErrorAction SilentlyContinue |
-                Where-Object {
-                    ($_.Name -like "*UwUConverter*") -or
-                    ($_.PackageFullName -like "*UwUConverter*") -or
-                    ($_.PackageFamilyName -like "*UwUConverter*")
-                }
-        )
+        $Candidates = @(Get-AppxPackage -ErrorAction SilentlyContinue | Where-Object { ($_.Name -like "*UwUConverter*") -or ($_.PackageFullName -like "*UwUConverter*") -or ($_.PackageFamilyName -like "*UwUConverter*") })
 
         if ($Candidates.Count -eq 0) {
             Write-Log -Text "No UwUConverter-like AppX packages were visible to the current user."
         }
 
         foreach ($Candidate in $Candidates) {
-            Write-Log -Text (
-                "Candidate package: Name="
-                + $Candidate.Name
-                + "; FullName="
-                + $Candidate.PackageFullName
-                + "; Family="
-                + $Candidate.PackageFamilyName
-            )
+            $CandidateText = "Candidate package: Name=" + $Candidate.Name + "; FullName=" + $Candidate.PackageFullName + "; Family=" + $Candidate.PackageFamilyName
+            Write-Log -Text $CandidateText
         }
 
-        throw (
-            "Add-AppxPackage returned without an error, but the package "
-            + "could not be found for the current user after waiting 5 seconds."
-        )
+        throw "Add-AppxPackage returned without an error, but the package could not be found for the current user after waiting 5 seconds."
     }
 
-    Write-Log -Text (
-        "Registered package: "
-        + $RegisteredPackage.PackageFullName
-    )
+    $RegisteredText = "Registered package: " + $RegisteredPackage.PackageFullName
+    Write-Log -Text $RegisteredText
 
     $SystemFileAssociations = "Registry::HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations"
 
@@ -308,19 +238,11 @@ try {
             $ArchiveKey = Join-Path -Path $AssociationKey.PSPath -ChildPath "shell\UwUConverterExtract"
 
             if (Test-Path -LiteralPath $ConversionKey) {
-                Remove-Item `
-                    -LiteralPath $ConversionKey `
-                    -Recurse `
-                    -Force `
-                    -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath $ConversionKey -Recurse -Force -ErrorAction SilentlyContinue
             }
 
             if (Test-Path -LiteralPath $ArchiveKey) {
-                Remove-Item `
-                    -LiteralPath $ArchiveKey `
-                    -Recurse `
-                    -Force `
-                    -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath $ArchiveKey -Recurse -Force -ErrorAction SilentlyContinue
             }
         }
     }
@@ -335,21 +257,11 @@ try {
 
     foreach ($LegacyKey in $LegacyLiteralKeys) {
         if (Test-Path -LiteralPath $LegacyKey) {
-            Remove-Item `
-                -LiteralPath $LegacyKey `
-                -Recurse `
-                -Force `
-                -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $LegacyKey -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 
-    New-ItemProperty `
-        -Path $SettingsPath `
-        -Name $ModernShellValue `
-        -PropertyType DWord `
-        -Value 1 `
-        -Force |
-        Out-Null
+    New-ItemProperty -Path $SettingsPath -Name $ModernShellValue -PropertyType DWord -Value 1 -Force | Out-Null
 
     Write-Log -Text "Removed legacy duplicate context-menu registrations."
     Write-Log -Text "ModernShellRegistered=1"

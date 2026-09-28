@@ -13,7 +13,7 @@ APP_NAME = "UwUConverter"
 
 
 BROWSERS = [
-    {         
+    {
         "id": "chrome",
         "name": "Google Chrome",
         "family": "chromium",
@@ -21,7 +21,7 @@ BROWSERS = [
         "commands": [
             "google-chrome",
             "google-chrome-stable",
-        ], 
+        ],
         "flatpaks": [
             "com.google.Chrome",
         ],

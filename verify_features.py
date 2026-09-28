@@ -153,7 +153,7 @@ def test_updater_linux_package_extract():
         with tarfile.open(package, "w:gz") as archive:
             archive.add(temp / "package", arcname="payload")
 
-        extracted_root, extracted_installer = updater.extract_linux_package(package)
+        extracted_root, extracted_installer, extracted_gui_installer = updater.extract_linux_package(package)
         try:
             if not extracted_installer.is_file():
                 raise AssertionError("install.sh not found after extraction")
@@ -487,7 +487,7 @@ def test_archive_wrapper():
     captured = []
     original_run = archive_manager.run_7zip
 
-    def capture(arguments):
+    def capture(arguments, **kwargs):
         captured.append(list(arguments))
         archive_path = pathlib.Path(arguments[3])
         archive_path.write_bytes(b"fake")
@@ -692,7 +692,7 @@ def test_windows_structural():
     for item in [
         "ARCHIVE_EXTENSIONS",
         "AddArchiveMenus",
-        "Extract With UwUConverter",
+        "ARCHIVE_MENU_NAME",
     ]:
         if item not in make_key:
             raise AssertionError(f"make_key.py missing {item}")

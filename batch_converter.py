@@ -2,6 +2,7 @@ import os
 import pathlib
 import time
 import traceback
+from duplicate_detection import DuplicateDetector
 import uuid
 
 CATEGORY_EXTENSIONS = {
@@ -116,6 +117,21 @@ class NullLog:
     ):
         return False
 
+
+
+def find_output_collisions(paths, output_format):
+    """Preflight sources that would produce the same output filename.
+
+    The list is informational; actual output conflicts are resolved by the
+    existing Replace / Skip / Keep Both / Cancel dialog during conversion.
+    """
+    target_ext = OUTPUT_EXTENSIONS[output_format.lower()]
+    by_name = {}
+    for path in paths:
+        source = pathlib.Path(path)
+        target_name = (source.stem + target_ext).casefold()
+        by_name.setdefault(target_name, []).append(str(source))
+    return {name: values for name, values in by_name.items() if len(values) > 1}
 
 
 def batch_convert_folder(
@@ -246,6 +262,7 @@ def batch_convert_folder(
                     report("counting")
 
         if not stats["cancelled"]:
+            duplicate_detector = DuplicateDetector()
             stats["scanned"] = 0
             report("converting")
 
@@ -273,6 +290,14 @@ def batch_convert_folder(
                         continue
 
                     try:
+                        duplicate_of = duplicate_detector.check(source)
+                        if duplicate_of is not None:
+                            stats["skipped"] += 1
+                            stats["processed"] += 1
+                            log.write(f"DUPLICATE\t{source}\tidentical to {duplicate_of}\n")
+                            report("converting", source.name)
+                            continue
+
                         result = convert_one(
                             source,
                             folder,

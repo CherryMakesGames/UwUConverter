@@ -170,7 +170,7 @@ def main() -> None:
 
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
     print(OUTPUT)
-    print(f"Generated {len(rows) + 3} modern context-menu actions.")
+    print(f"Generated {len(rows) + 2} modern context-menu actions.")
 
 
 if __name__ == "__main__":

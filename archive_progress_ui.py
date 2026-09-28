@@ -9,6 +9,8 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 
+from settings import get_bool
+
 from archive_manager import (
     ArchiveOperationCancelled,
     add_to_archive,
@@ -87,6 +89,7 @@ class ArchiveProgressWindow:
         self.started_at = None
         self.row_ids = []
         self.open_targets = []
+        self.auto_close_success = tk.BooleanVar(value=get_bool("Operations", "auto_close_success", True))
 
         self.current_name = (
             tk.StringVar(
@@ -344,6 +347,12 @@ class ArchiveProgressWindow:
         self.close_button.pack(
             side="right",
         )
+
+        ttk.Checkbutton(
+            bottom,
+            text="Auto-close on success",
+            variable=self.auto_close_success,
+        ).pack(side="left", padx=(12, 0))
 
         self.cancel_button = ttk.Button(
             bottom,
@@ -930,6 +939,10 @@ class ArchiveProgressWindow:
             self.open_button.configure(
                 state="normal"
             )
+
+        # Keep failed/cancelled jobs visible for inspection.
+        if self.success and self.auto_close_success.get():
+            self.window.after(650, self.window.destroy)
 
     def _update_elapsed(self):
         if (

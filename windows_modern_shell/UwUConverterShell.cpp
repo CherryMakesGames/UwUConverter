@@ -205,10 +205,32 @@ bool IsZipSelectionAction(
     ) == 0;
 }
 
+bool UserAllowsAction(const UwUActionDefinition& action) {
+    // Fast, native settings lookup: no Python launch from inside Explorer.
+    wchar_t appData[32768] = {};
+    DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", appData, 32768);
+    if (length == 0 || length >= 32768) return true;
+    std::wstring path(appData);
+    path += L"\\UwUConverter\\settings.ini";
+    std::wstring name = ToLower(action.title);
+    std::wstring command = ToLower(action.action);
+    const wchar_t* category = L"image";
+    if (command.find(L"archive_") == 0 || name.find(L"archive -") == 0) category = L"archive";
+    else if (command.find(L"batch_") == 0 || name.find(L"batch convert") == 0) category = L"batch";
+    else if (command.find(L"compress") != std::wstring::npos || name.find(L"compression") != std::wstring::npos) category = L"compression";
+    else if (name.find(L"spreadsheet") == 0) category = L"spreadsheet";
+    else if (name.find(L"document") == 0) category = L"document";
+    else if (name.find(L"3d model") == 0) category = L"model";
+    else if (name.find(L"audio") == 0) category = L"audio";
+    else if (name.find(L"video") == 0) category = L"video";
+    return GetPrivateProfileIntW(L"ContextMenu", category, 1, path.c_str()) != 0;
+}
+
 bool ActionApplies(
     const UwUActionDefinition& action,
     const std::vector<SelectedItem>& selection
 ) {
+    if (!UserAllowsAction(action)) return false;
     if (IsZipSelectionAction(action)) {
         return !selection.empty();
     }
@@ -456,6 +478,7 @@ public:
 
         commands_.reserve(kUwUActionCount);
         for (size_t index = 0; index < kUwUActionCount; ++index) {
+            if (!UserAllowsAction(kUwUActions[index])) continue;
             auto* command = new (std::nothrow) ActionCommand(&kUwUActions[index]);
             if (command) {
                 commands_.push_back(command);

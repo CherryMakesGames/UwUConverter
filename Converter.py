@@ -11,6 +11,7 @@ from archive_progress_ui import (
 )
 from archive_ui import open_archive_manager
 from audio_converter import convert_audio
+from duplicate_detection import DuplicateDetector
 from conflict_dialog import (
     CANCEL,
     KEEP_BOTH,
@@ -320,10 +321,35 @@ def ConvertFiles(
                 ),
             }
 
+    # Warn once before converting mixed extensions with the same basename.
+    # Content-identical input files are detected independently below.
+    if action in (VIDEO_OUTPUTS | AUDIO_OUTPUTS | IMAGE_OUTPUTS | MODEL_OUTPUTS):
+        from batch_converter import find_output_collisions, OUTPUT_EXTENSIONS
+        if action in OUTPUT_EXTENSIONS:
+            supported = [path for path in file_paths if IsActionSupportedForFile(path, action)]
+            # Compare per-directory targets, not just basenames, for files
+            # that came from different source directories.
+            planned = {}
+            for path in supported:
+                source = pathlib.Path(path)
+                target = str(source.with_suffix(OUTPUT_EXTENSIONS[action])).casefold()
+                planned.setdefault(target, []).append(source.name)
+            collisions = {key: names for key, names in planned.items() if len(names) > 1}
+            if collisions:
+                samples = [", ".join(names) for names in list(collisions.values())[:5]]
+                if not messagebox.askyesno(
+                    "Duplicate output filenames",
+                    "These selected files would create the same output filenames:\n\n"
+                    + "\n".join(samples)
+                    + "\n\nContinue? Output conflicts will be handled individually.",
+                ):
+                    return {"converted": 0, "skipped": len(file_paths), "failed": 0}
+
     converted = 0
     skipped = 0
     failures = []
     resolver = ConflictResolver()
+    duplicate_detector = DuplicateDetector()
 
     for file_path in file_paths:
         if not IsActionSupportedForFile(
@@ -334,6 +360,11 @@ def ConvertFiles(
             continue
 
         try:
+            duplicate_of = duplicate_detector.check(file_path)
+            if duplicate_of is not None:
+                skipped += 1
+                continue
+
             result = ConvertFile(
                 file_path,
                 convert_type,
@@ -727,6 +758,11 @@ if __name__ == "__main__":
         and sys.argv[1] == "--uninstall"
     )
 
+    is_opening_settings = (
+        len(sys.argv) > 1
+        and sys.argv[1] == "--settings"
+    )
+
     is_setting_up_integrations = (
         len(sys.argv) > 1
         and sys.argv[1] == "--setup-integrations"
@@ -739,6 +775,10 @@ if __name__ == "__main__":
             platform_menu.RemoveExtensions(
                 file_types
             )
+
+        elif is_opening_settings:
+            from settings_ui import open_settings
+            open_settings()
 
         elif is_setting_up_integrations:
             import platform_menu
@@ -771,9 +811,10 @@ if __name__ == "__main__":
             )
 
         else:
-            # Opening the executable without an operation must not mutate
-            # Explorer/browser integration. Integration setup is installer-only.
-            raise SystemExit
+            # Opening the executable without an operation opens settings,
+            # but never mutates Explorer/browser integration automatically.
+            from settings_ui import open_settings
+            open_settings()
 
     except Exception:
         error_text = traceback.format_exc()

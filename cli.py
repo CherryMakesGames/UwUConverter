@@ -320,7 +320,10 @@ def build_parser():
         help="Install without asking for confirmation."
     )
 
-
+    commands.add_parser(
+        "settings",
+        help="Open graphical preferences and context-menu customization."
+    )
     commands.add_parser(
         "formats",
         help="List supported input and output formats."
@@ -924,6 +927,11 @@ def main(argv=None):
                 check_only=args.check_only,
                 assume_yes=args.yes,
             )
+
+        if args.command == "settings":
+            from settings_ui import open_settings
+            open_settings()
+            return 0
 
         if args.command == "formats":
             return formats_command()

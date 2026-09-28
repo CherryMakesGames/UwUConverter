@@ -10,14 +10,32 @@ AUDIO_CODECS = {
 }
 
 
+def _available_encoder(name):
+    try:
+        av.codec.Codec(name, "w")
+        return True
+    except Exception:
+        return False
+
+
 def convert_audio(file_path, output_file_path, output_format):
-    encoder = AUDIO_CODECS.get(output_format)
+    encoder = AUDIO_CODECS.get(output_format.lower())
 
     if encoder is None:
         raise ValueError(
             "Unsupported audio output format: "
             + output_format
         )
+
+    # Only choose alternative encoders that are valid for the selected
+    # output container. Never silently change the requested file format.
+    alternates = {"mp3": ["libmp3lame", "mp3"], "wav": ["pcm_s16le"],
+                  "flac": ["flac"], "ogg": ["libvorbis", "vorbis"],
+                  "opus": ["libopus", "opus"]}
+    encoder = next((name for name in alternates[output_format.lower()]
+                    if _available_encoder(name)), None)
+    if encoder is None:
+        raise RuntimeError("No installed compatible audio encoder for " + output_format)
 
     input_file = av.open(file_path)
     output_file = av.open(output_file_path, "w")

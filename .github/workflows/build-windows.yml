@@ -139,6 +139,10 @@ jobs:
             throw "Missing Firefox extension ZIP"
           }
 
+      - name: Run UwUConverter 3.2 regression tests
+        shell: pwsh
+        run: python -m unittest discover -s tests -v
+
       - name: Build Windows 11 modern context menu
         shell: pwsh
         run: |

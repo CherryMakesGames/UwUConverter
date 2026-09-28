@@ -1,10 +1,12 @@
 import queue
+import pathlib
 import threading
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 
-from batch_converter import batch_convert_folder
+from batch_converter import batch_convert_folder, find_output_collisions, CATEGORY_EXTENSIONS
+from settings import get_bool
 from conflict_dialog import (
     CANCEL,
     show_output_conflict,
@@ -351,6 +353,29 @@ def open_batch_dialog(folder_path, category=None):
 
         selected_format = format_box.get().lower()
 
+        # Detect *planned output name collisions* before any conversion runs,
+        # e.g. photo.jpg + photo.png -> photo.webp. Hash-based duplicate
+        # detection is a separate check inside the batch worker.
+        inputs = [
+            entry
+            for entry in pathlib.Path(folder_path).iterdir()
+            if entry.is_file()
+            and entry.suffix.lower() in CATEGORY_EXTENSIONS[selected]
+        ]
+        collisions = find_output_collisions(inputs, selected_format)
+        if collisions:
+            examples = [
+                name + " <= " + ", ".join(pathlib.Path(src).name for src in sources)
+                for name, sources in list(collisions.items())[:5]
+            ]
+            if not messagebox.askyesno(
+                "Duplicate output filenames",
+                str(len(collisions)) + " output filename collision(s) detected before conversion.\n\n"
+                + "\n".join(examples)
+                + "\n\nContinue? The conflict dialog will offer Replace, Skip, and Keep Both.",
+            ):
+                return
+
         if selected_mode == "replace":
             confirmed = messagebox.askyesno(
                 "Replace originals?",
@@ -523,8 +548,11 @@ def open_batch_dialog(folder_path, category=None):
                                 else ""
                             )
                         )
-                    else:
+                    elif payload["failed"] == 0 and get_bool("Operations", "auto_close_success", True):
                         status.config(text="Batch complete.")
+                        root.after(650, root.destroy)
+                    else:
+                        status.config(text="Batch complete with errors." if payload["failed"] else "Batch complete.")
                         messagebox.showinfo(
                             "Batch complete",
                             "Converted: "

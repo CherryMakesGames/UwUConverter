@@ -853,3 +853,17 @@ The software is provided without warranty. See the `LICENSE` file for the comple
 # Development Status
 
 UwUConverter is a learning project and is under active development. Some unusual files, codecs, camera RAW formats, archive formats, office documents, 3D models, browser integrations, and conversion combinations may not work correctly yet.
+
+
+## What is new in 3.2
+
+- Archive operation progress windows close automatically after a successful operation (enabled by default; failed/cancelled operations stay visible).
+- Content-based duplicate detection for batch and multi-file right-click conversions; duplicates are skipped, never deleted.
+- Context-menu customization in `UwUConverter.exe --settings`, shared with the Windows 11 native shell through `settings.ini`.
+- Video container compatibility inspection with automatic codec fallback/transcoding where appropriate.
+
+Settings are kept in `%LOCALAPPDATA%\UwUConverter\settings.ini` on Windows and `$XDG_CONFIG_HOME/UwUConverter/settings.ini` on Linux.
+
+Open settings from the Start menu on Windows, the application executable with no arguments, or `UwUConverter settings`. Windows 11 reads category toggles from the same INI file in Explorer; restart Explorer if a stale menu remains. On Windows 10/Linux, refresh the classic menus with `UwUConverter install-menu` after changing category toggles.
+
+Batch and mixed right-click conversions also preflight duplicate **output filenames** (for example `photo.png` and `photo.jpg` both producing `photo.webp`). They warn before starting and use the existing conflict dialog while processing. This is separate from SHA-256 duplicate-content detection.

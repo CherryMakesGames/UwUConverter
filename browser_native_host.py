@@ -277,7 +277,7 @@ def _data_url_bytes(url):
 def _download_http_image(url, page_url):
     headers = {
         "User-Agent": (
-            "Mozilla/5.0 UwUConverter/0.11 "
+            "Mozilla/5.0 UwUConverter/3.2.0 "
             "(+browser native host)"
         ),
         "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",

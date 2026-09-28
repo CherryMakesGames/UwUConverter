@@ -1,0 +1,21 @@
+test_installed_encoder_fallback (test_v32.CodecTests.test_installed_encoder_fallback) ... ok
+test_mkv_unknown_codecs_try_remux (test_v32.CodecTests.test_mkv_unknown_codecs_try_remux) ... ok
+test_mp4_compatible_codec_remuxes (test_v32.CodecTests.test_mp4_compatible_codec_remuxes) ... ok
+test_mp4_unsupported_video_codec_transcodes (test_v32.CodecTests.test_mp4_unsupported_video_codec_transcodes) ... ok
+test_webm_incompatible_codec_transcodes (test_v32.CodecTests.test_webm_incompatible_codec_transcodes) ... ok
+test_actual_batch_duplicate_skip (test_v32.DuplicateTests.test_actual_batch_duplicate_skip) ... ok
+test_disabled_duplicate_detection (test_v32.DuplicateTests.test_disabled_duplicate_detection) ... ok
+test_identical_bytes_detected_without_deletion (test_v32.DuplicateTests.test_identical_bytes_detected_without_deletion) ... ok
+test_planned_output_filename_collision (test_v32.DuplicateTests.test_planned_output_filename_collision) ... ok
+test_autoclose_success_only (test_v32.IntegrationTests.test_autoclose_success_only) ... ok
+test_browser_archives (test_v32.IntegrationTests.test_browser_archives) ... ok
+test_native_shell_honors_ini (test_v32.IntegrationTests.test_native_shell_honors_ini) ... ok
+test_version_consistency (test_v32.IntegrationTests.test_version_consistency) ... ok
+test_category_filter_is_recursive (test_v32.SettingsTests.test_category_filter_is_recursive) ... ok
+test_menu_categories (test_v32.SettingsTests.test_menu_categories) ... ok
+test_settings_defaults_and_roundtrip (test_v32.SettingsTests.test_settings_defaults_and_roundtrip) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.007s
+
+OK
