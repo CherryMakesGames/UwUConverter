@@ -32,6 +32,11 @@ ARCHIVE_EXTENSIONS = {
     ".arj", ".lzh", ".lzma", ".rpm", ".dmg", ".xar",
 }
 
+IMAGE_EXTENSIONS = {
+    ".png", ".jpg", ".jpeg", ".webp",
+    ".ico", ".tif", ".tiff", ".raw",
+}
+
 app_folder = os.path.join(
     os.environ["LOCALAPPDATA"],
     "UwUConverter"
@@ -441,6 +446,49 @@ def CreateMenuItems(parent_path, items):
             )
 
 
+def AddImagesToPdfChildMenu(
+    parent_path,
+    item_id="97_images_pdf",
+):
+    item_path = (
+        parent_path
+        + "\\shell\\"
+        + item_id
+    )
+
+    with reg.CreateKey(
+        reg.HKEY_CURRENT_USER,
+        item_path
+    ) as item_key:
+        reg.SetValueEx(
+            item_key,
+            "MUIVerb",
+            0,
+            reg.REG_SZ,
+            "Combine Selected Images into One PDF..."
+        )
+        reg.SetValueEx(
+            item_key,
+            "Icon",
+            0,
+            reg.REG_SZ,
+            icon_value
+        )
+        reg.SetValueEx(
+            item_key,
+            "MultiSelectModel",
+            0,
+            reg.REG_SZ,
+            "Player"
+        )
+
+    CreateMultiCommand(
+        item_path
+        + "\\command",
+        "IMAGES_TO_SINGLE_PDF"
+    )
+
+
 def AddZipChildMenu(
     parent_path,
     item_id="98_zip",
@@ -530,6 +578,15 @@ def AddExtension(file_type, conversions):
     )
 
     from settings import enabled
+
+    if (
+        file_type in IMAGE_EXTENSIONS
+        and enabled("image")
+    ):
+        AddImagesToPdfChildMenu(
+            key_path
+        )
+
     if enabled("archive"):
         AddZipChildMenu(key_path)
 

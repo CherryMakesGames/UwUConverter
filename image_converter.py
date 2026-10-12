@@ -17,6 +17,101 @@ IMAGE_OUTPUTS = {
 }
 
 
+IMAGE_INPUT_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".ico",
+    ".tif",
+    ".tiff",
+    ".raw",
+}
+
+
+def open_input_image(file_path):
+    if pathlib.Path(file_path).suffix.lower() == ".raw":
+        import rawpy
+
+        with rawpy.imread(file_path) as raw_image:
+            rgb = raw_image.postprocess()
+            return Image.fromarray(rgb)
+
+    return open_image_safely(
+        file_path
+    )
+
+
+def convert_images_to_pdf(
+    file_paths,
+    output_file_path,
+):
+    paths = [
+        pathlib.Path(path)
+        for path in file_paths
+    ]
+
+    if len(paths) < 2:
+        raise ValueError(
+            "Select at least two images to create one PDF."
+        )
+
+    unsupported = [
+        str(path)
+        for path in paths
+        if path.suffix.lower() not in IMAGE_INPUT_EXTENSIONS
+    ]
+
+    if unsupported:
+        raise ValueError(
+            "Unsupported image selected for combined PDF: "
+            + unsupported[0]
+        )
+
+    pages = []
+
+    try:
+        for path in paths:
+            image = open_input_image(
+                path
+            )
+
+            prepared = None
+
+            try:
+                prepared = prepare_for_pdf(
+                    image
+                )
+                prepared.load()
+
+                # Copy each page so it remains valid after the source image
+                # and its underlying file handle are closed.
+                pages.append(
+                    prepared.copy()
+                )
+
+            finally:
+                if (
+                    prepared is not None
+                    and prepared is not image
+                ):
+                    prepared.close()
+
+                image.close()
+
+        first_page = pages[0]
+        first_page.save(
+            output_file_path,
+            "PDF",
+            save_all=True,
+            append_images=pages[1:],
+        )
+
+    finally:
+        for page in pages:
+            page.close()
+
+
 def convert_image(file_path, output_file_path, output_format):
     if output_format not in IMAGE_OUTPUTS:
         raise ValueError(
@@ -24,16 +119,9 @@ def convert_image(file_path, output_file_path, output_format):
             + output_format
         )
 
-    if pathlib.Path(file_path).suffix.lower() == ".raw":
-        import rawpy
-
-        with rawpy.imread(file_path) as raw_image:
-            rgb = raw_image.postprocess()
-            image = Image.fromarray(rgb)
-    else:
-        image = open_image_safely(
-            file_path
-        )
+    image = open_input_image(
+        file_path
+    )
 
     try:
         if output_format in ("jpg", "jpeg"):

@@ -32,6 +32,11 @@ ARCHIVE_EXTENSIONS = {
     ".arj", ".lzh", ".lzma", ".rpm", ".dmg", ".xar",
 }
 
+IMAGE_EXTENSIONS = {
+    ".png", ".jpg", ".jpeg", ".webp",
+    ".ico", ".raw", ".tif", ".tiff",
+}
+
 ARCHIVE_ACTIONS = [
     ("Open Archive Manager", "ARCHIVE_OPEN_UI"),
     ("Extract Here", "ARCHIVE_EXTRACT_HERE"),
@@ -156,6 +161,17 @@ def main() -> None:
     lines.extend(
         [
             (
+                '    {L"Image - Combine Selected Images into One PDF...", '
+                'L"IMAGES_TO_SINGLE_PDF", L"%s", false},'
+                % escape_cpp(
+                    ";".join(
+                        sorted(
+                            IMAGE_EXTENSIONS
+                        )
+                    )
+                )
+            ),
+            (
                 '    {L"Archive - Compress Selection to ZIP...", '
                 'L"ARCHIVE_CREATE_ZIP_PROMPT", L"", false},'
             ),
@@ -170,7 +186,7 @@ def main() -> None:
 
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
     print(OUTPUT)
-    print(f"Generated {len(rows) + 2} modern context-menu actions.")
+    print(f"Generated {len(rows) + 3} modern context-menu actions.")
 
 
 if __name__ == "__main__":

@@ -261,20 +261,41 @@ def test_linux_menu_generation():
                 'Extract to Archive-Named Folder and Delete Archive',
             ]:
                 assert label in txt, label
-            universal = root / 'uwuconverter-files-universal.desktop'
-            assert universal.is_file(), universal
-            universal_text = universal.read_text()
-            for mime in [
-                'image/png;',
-                'video/mp4;',
-                'audio/mpeg;',
-                'application/pdf;',
-                'text/csv;',
-                'model/obj;',
+            png_menu = root / 'uwuconverter-mime-image-png.desktop'
+            assert png_menu.is_file(), png_menu
+            png_text = png_menu.read_text()
+            assert 'MimeType=image/png;' in png_text
+            assert 'Convert To JPG' in png_text
+            assert 'Convert To WEBP' in png_text
+            assert 'Convert To PNG' not in png_text
+            assert 'Convert To MP4' not in png_text
+            assert ' %F' in png_text
+            assert '__MULTI__' in png_text
+
+            jpeg_menu = root / 'uwuconverter-mime-image-jpeg.desktop'
+            assert jpeg_menu.is_file(), jpeg_menu
+            jpeg_text = jpeg_menu.read_text()
+            assert jpeg_text.count('Convert To PNG') == 1
+            assert 'Convert To JPG' not in jpeg_text
+            assert 'Convert To JPEG' not in jpeg_text
+
+            for name in [
+                'uwuconverter-mime-video-mp4.desktop',
+                'uwuconverter-mime-audio-mpeg.desktop',
+                'uwuconverter-mime-application-pdf.desktop',
+                'uwuconverter-mime-text-csv.desktop',
+                'uwuconverter-mime-model-obj.desktop',
             ]:
-                assert mime in universal_text, mime
-            assert ' %F' in universal_text
-            assert '__MULTI__' in universal_text
+                assert (root / name).is_file(), name
+
+            combined_pdf = root / 'uwuconverter-images-to-pdf.desktop'
+            assert combined_pdf.is_file(), combined_pdf
+            combined_text = combined_pdf.read_text()
+            assert 'X-KDE-MinNumberOfUrls=2' in combined_text
+            assert 'IMAGES_TO_SINGLE_PDF' in combined_text
+
+            universal = root / 'uwuconverter-files-universal.desktop'
+            assert not universal.exists(), universal
             old_category_files = list(root.glob('uwuconverter-category-*.desktop'))
             assert not old_category_files, old_category_files
             """
@@ -290,7 +311,7 @@ def test_linux_menu_generation():
         )
         if result.returncode != 0:
             raise RuntimeError((result.stdout + result.stderr).strip())
-    return "Dolphin universal mixed-file, folder, and archive menus generated"
+    return "Dolphin MIME-specific menus, combined-image PDF action, folder, and archive menus generated"
 
 
 def test_batch_engine():

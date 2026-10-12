@@ -196,6 +196,15 @@ HRESULT ReadSelection(IShellItemArray* items, std::vector<SelectedItem>& output)
     return output.empty() ? E_FAIL : S_OK;
 }
 
+bool IsImagesToPdfAction(
+    const UwUActionDefinition& action
+) {
+    return _wcsicmp(
+        action.action,
+        L"IMAGES_TO_SINGLE_PDF"
+    ) == 0;
+}
+
 bool IsZipSelectionAction(
     const UwUActionDefinition& action
 ) {
@@ -231,6 +240,27 @@ bool ActionApplies(
     const std::vector<SelectedItem>& selection
 ) {
     if (!UserAllowsAction(action)) return false;
+
+    if (IsImagesToPdfAction(action)) {
+        if (selection.size() < 2) {
+            return false;
+        }
+
+        for (const auto& item : selection) {
+            if (
+                item.isFolder
+                || !ExtensionListContains(
+                    action.extensions,
+                    item.extension
+                )
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     if (IsZipSelectionAction(action)) {
         return !selection.empty();
     }
@@ -253,6 +283,16 @@ std::vector<std::wstring> PathsForAction(
     const std::vector<SelectedItem>& selection
 ) {
     std::vector<std::wstring> paths;
+
+    if (IsImagesToPdfAction(action)) {
+        for (const auto& item : selection) {
+            paths.push_back(
+                item.path
+            );
+        }
+
+        return paths;
+    }
 
     if (IsZipSelectionAction(action)) {
         for (const auto& item : selection) {

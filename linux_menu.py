@@ -1,7 +1,10 @@
+import os
 import pathlib
+import re
 import shlex
 import shutil
 import stat
+import subprocess
 import sys
 
 
@@ -16,14 +19,31 @@ SCRIPT_FOLDERS = {
     / ".config/caja/scripts",
 }
 
-DOLPHIN_FOLDER = (
-    pathlib.Path.home()
-    / ".local/share/kio/servicemenus"
+XDG_DATA_HOME = pathlib.Path(
+    os.environ.get(
+        "XDG_DATA_HOME",
+        str(
+            pathlib.Path.home()
+            / ".local/share"
+        ),
+    )
 )
 
-DOLPHIN_OLD_PATTERNS = [
-    "uwuconverter-*.desktop",
-    "UwUConverter-*.desktop",
+DOLPHIN_FOLDER = (
+    XDG_DATA_HOME
+    / "kio/servicemenus"
+)
+
+# KDE Frameworks before 5.85 used kservices5. Old UwUConverter builds
+# could leave service-menu files there, causing every action to appear twice
+# after KDE was upgraded. Clean all user-level locations we have used.
+DOLPHIN_SERVICE_FOLDERS = [
+    DOLPHIN_FOLDER,
+    XDG_DATA_HOME / "kservices5",
+    XDG_DATA_HOME / "kservices5/ServiceMenus",
+    XDG_DATA_HOME / "kservices/ServiceMenus",
+    pathlib.Path.home()
+    / ".kde4/share/kde4/services/ServiceMenus",
 ]
 
 OLD_SCRIPT_NAMES = {
@@ -196,6 +216,19 @@ def CreateExtensions(file_types):
             )
             make_executable(archive_launcher)
 
+        pdf_launcher = app_folder / (
+            "Combine Selected Images into One PDF With UwUConverter"
+        )
+
+        if enabled("image"):
+            pdf_launcher.write_text(
+                build_images_to_pdf_script(),
+                encoding="utf-8"
+            )
+            make_executable(
+                pdf_launcher
+            )
+
         print(
             f"Installed {manager} batch GUI launcher: "
             f"{launcher}"
@@ -204,9 +237,15 @@ def CreateExtensions(file_types):
     if enabled("batch"):
         create_dolphin_batch_gui_menu()
     create_dolphin_file_menus(file_types)
+
+    if enabled("image"):
+        create_dolphin_images_to_pdf_menu()
+
     if enabled("archive"):
         create_dolphin_archive_menu()
         create_dolphin_zip_selection_menu()
+
+    refresh_kde_service_cache()
 
     print(
         "Installed Dolphin UwUConverter menus: "
@@ -216,6 +255,7 @@ def CreateExtensions(file_types):
 
 def RemoveExtensions(file_types=None):
     removed = cleanup_linux_integrations()
+    refresh_kde_service_cache()
 
     if removed:
         print(
@@ -251,22 +291,48 @@ def cleanup_linux_integrations():
 
                 removed.append(str(old_path))
 
-    if DOLPHIN_FOLDER.exists():
-        found = set()
+    for service_folder in DOLPHIN_SERVICE_FOLDERS:
+        if not service_folder.exists():
+            continue
 
-        for pattern in DOLPHIN_OLD_PATTERNS:
-            for path in DOLPHIN_FOLDER.glob(pattern):
-                found.add(path)
+        for path in service_folder.glob("*.desktop"):
+            if "uwuconverter" not in path.name.casefold():
+                continue
 
-        for path in sorted(found):
             if path.is_file() or path.is_symlink():
                 path.unlink()
-                removed.append(str(path))
-            elif path.is_dir():
-                shutil.rmtree(path)
-                removed.append(str(path))
+                removed.append(
+                    str(path)
+                )
 
     return removed
+
+
+def refresh_kde_service_cache():
+    for executable_name in (
+        "kbuildsycoca6",
+        "kbuildsycoca5",
+    ):
+        executable = shutil.which(
+            executable_name
+        )
+
+        if not executable:
+            continue
+
+        try:
+            subprocess.run(
+                [
+                    executable,
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except OSError:
+            pass
+
+        return
 
 
 def create_dolphin_batch_gui_menu():
@@ -309,151 +375,246 @@ def create_dolphin_batch_gui_menu():
     make_executable(path)
 
 
+def _mime_slug(mime_type):
+    return re.sub(
+        r"[^a-z0-9]+",
+        "-",
+        mime_type.casefold(),
+    ).strip("-")
+
+
+def _actions_for_extension(
+    file_types,
+    extension,
+):
+    result = []
+    seen = set()
+
+    for label, action in flatten_conversions(
+        file_types.get(
+            extension,
+            [],
+        )
+    ):
+        action_key = str(
+            action
+        ).casefold()
+
+        if action_key in seen:
+            continue
+
+        seen.add(
+            action_key
+        )
+        result.append(
+            (
+                label,
+                action,
+            )
+        )
+
+    return result
+
+
 def create_dolphin_file_menus(file_types):
     DOLPHIN_FOLDER.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    # Use one universal service menu for every supported conversion MIME
-    # type. This keeps the menu visible for mixed selections such as:
-    # PNG + JPG + MP4, or PDF + XLSX + WEBP.
-    #
-    # UwUConverter receives the whole selection and skips files for which
-    # the chosen action is not valid.
-    mime_types = []
-    actions = []
-    seen_actions = set()
+    # A universal menu makes Dolphin show actions that are invalid for the
+    # clicked file. Generate one menu per MIME type instead. When multiple
+    # extensions share one MIME type (for example .jpg and .jpeg), expose only
+    # the intersection of actions that are valid for every such extension.
+    mime_extensions = {}
 
-    category_labels = {
-        "video": "Video",
-        "audio": "Audio",
-        "image": "Image",
-        "document": "Document",
-        "spreadsheet": "Spreadsheet",
-        "model": "3D Model",
-    }
-
-    for category, extensions in (
-        DOLPHIN_FILE_CATEGORIES.items()
-    ):
-        category_label = category_labels.get(
-            category,
-            category.title()
+    for extension in file_types:
+        mime_type = MIME_TYPES.get(
+            extension
         )
 
-        for extension in extensions:
-            mime_type = MIME_TYPES.get(
-                extension
+        if not mime_type:
+            continue
+
+        mime_extensions.setdefault(
+            mime_type,
+            [],
+        ).append(
+            extension
+        )
+
+    for mime_type, extensions in sorted(
+        mime_extensions.items()
+    ):
+        action_lists = [
+            _actions_for_extension(
+                file_types,
+                extension,
+            )
+            for extension in extensions
+        ]
+
+        if not action_lists:
+            continue
+
+        common_actions = {
+            str(action).casefold()
+            for _, action in action_lists[0]
+        }
+
+        for action_list in action_lists[1:]:
+            common_actions.intersection_update(
+                str(action).casefold()
+                for _, action in action_list
             )
 
-            if (
-                mime_type
-                and mime_type not in mime_types
-            ):
-                mime_types.append(
+        actions = [
+            (
+                label,
+                action,
+            )
+            for label, action in action_lists[0]
+            if str(action).casefold()
+            in common_actions
+        ]
+
+        if not actions:
+            continue
+
+        path = (
+            DOLPHIN_FOLDER
+            / (
+                "uwuconverter-mime-"
+                + _mime_slug(
                     mime_type
                 )
+                + ".desktop"
+            )
+        )
 
-            conversions = file_types.get(
-                extension,
-                []
+        action_ids = [
+            f"uwu{index:03d}"
+            for index in range(
+                1,
+                len(actions) + 1
+            )
+        ]
+
+        lines = [
+            "[Desktop Entry]",
+            "Type=Service",
+            "MimeType="
+            + mime_type
+            + ";",
+            "Actions="
+            + ";".join(
+                action_ids
+            )
+            + ";",
+            "X-KDE-Submenu="
+            "Convert With UwUConverter ^-^",
+            "X-KDE-Priority=TopLevel",
+            "",
+        ]
+
+        for action_id, (
+            label,
+            convert_type,
+        ) in zip(
+            action_ids,
+            actions,
+        ):
+            command = " ".join(
+                shlex.quote(part)
+                for part in multi_file_command(
+                    convert_type
+                )
             )
 
-            for label, convert_type in (
-                flatten_conversions(
-                    conversions
-                )
-            ):
-                action_key = (
-                    category,
-                    str(convert_type).lower(),
-                )
+            lines.extend(
+                [
+                    f"[Desktop Action {action_id}]",
+                    "Name=" + label,
+                    "Icon=document-convert",
+                    "Exec=" + command + " %F",
+                    "",
+                ]
+            )
 
-                if action_key in seen_actions:
-                    continue
+        path.write_text(
+            "\n".join(lines),
+            encoding="utf-8"
+        )
 
-                seen_actions.add(
-                    action_key
-                )
+        make_executable(
+            path
+        )
 
-                # The same visible conversion names can exist in multiple
-                # categories, for example "Convert To PDF" for images,
-                # documents and spreadsheets. Prefixing the category keeps
-                # each action unambiguous in one universal menu.
-                actions.append(
-                    (
-                        category_label
-                        + " - "
-                        + label,
-                        convert_type,
-                    )
-                )
 
-    if (
-        not mime_types
-        or not actions
-    ):
-        return
+def create_dolphin_images_to_pdf_menu():
+    DOLPHIN_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    image_mime_types = []
+
+    for extension in DOLPHIN_FILE_CATEGORIES[
+        "image"
+    ]:
+        mime_type = MIME_TYPES.get(
+            extension
+        )
+
+        if (
+            mime_type
+            and mime_type not in image_mime_types
+        ):
+            image_mime_types.append(
+                mime_type
+            )
+
+    command = " ".join(
+        shlex.quote(part)
+        for part in multi_file_command(
+            "IMAGES_TO_SINGLE_PDF"
+        )
+    )
 
     path = (
         DOLPHIN_FOLDER
-        / "uwuconverter-files-universal.desktop"
+        / "uwuconverter-images-to-pdf.desktop"
     )
 
-    action_ids = [
-        f"uwu{index:03d}"
-        for index in range(
-            1,
-            len(actions) + 1
-        )
-    ]
-
-    lines = [
-        "[Desktop Entry]",
-        "Type=Service",
-        "MimeType="
-        + ";".join(mime_types)
-        + ";",
-        "Actions="
-        + ";".join(action_ids)
-        + ";",
-        "X-KDE-Submenu="
-        "Convert With UwUConverter ^-^",
-        "X-KDE-Priority=TopLevel",
-        "",
-    ]
-
-    for action_id, (
-        label,
-        convert_type
-    ) in zip(
-        action_ids,
-        actions
-    ):
-        command = " ".join(
-            shlex.quote(part)
-            for part in multi_file_command(
-                convert_type
+    content = "\n".join(
+        [
+            "[Desktop Entry]",
+            "Type=Service",
+            "MimeType="
+            + ";".join(
+                image_mime_types
             )
-        )
-
-        lines.extend(
-            [
-                f"[Desktop Action {action_id}]",
-                "Name=" + label,
-                "Icon=document-convert",
-                "Exec=" + command + " %F",
-                "",
-            ]
-        )
+            + ";",
+            "Actions=uwuImagesToPdf;",
+            "X-KDE-MinNumberOfUrls=2",
+            "X-KDE-Priority=TopLevel",
+            "",
+            "[Desktop Action uwuImagesToPdf]",
+            "Name=Combine Selected Images into One PDF With UwUConverter",
+            "Icon=application-pdf",
+            "Exec=" + command + " %F",
+            "",
+        ]
+    )
 
     path.write_text(
-        "\n".join(lines),
+        content,
         encoding="utf-8"
     )
 
-    make_executable(path)
+    make_executable(
+        path
+    )
 
 
 
@@ -733,6 +894,44 @@ def build_archive_open_script():
         "\n"
         "if [ \"${#paths[@]}\" -gt 0 ]; then\n"
         f"    {command} \"${{paths[0]}}\" "
+        ">/dev/null 2>&1 &\n"
+        "fi\n"
+    )
+
+
+def build_images_to_pdf_script():
+    command = " ".join(
+        shlex.quote(part)
+        for part in multi_file_command(
+            "IMAGES_TO_SINGLE_PDF"
+        )
+    )
+
+    return (
+        "#!/usr/bin/env bash\n"
+        "set -u\n"
+        "paths=()\n"
+        "\n"
+        "if [ \"$#\" -gt 0 ]; then\n"
+        "    paths=(\"$@\")\n"
+        "else\n"
+        "    selected=\"${NAUTILUS_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    if [ -z \"$selected\" ]; then\n"
+        "        selected=\"${NEMO_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    fi\n"
+        "    if [ -z \"$selected\" ]; then\n"
+        "        selected=\"${CAJA_SCRIPT_SELECTED_FILE_PATHS:-}\"\n"
+        "    fi\n"
+        "\n"
+        "    while IFS= read -r selected_path; do\n"
+        "        if [ -n \"$selected_path\" ]; then\n"
+        "            paths+=(\"$selected_path\")\n"
+        "        fi\n"
+        "    done <<< \"$selected\"\n"
+        "fi\n"
+        "\n"
+        "if [ \"${#paths[@]}\" -ge 2 ]; then\n"
+        f"    {command} \"${{paths[@]}}\" "
         ">/dev/null 2>&1 &\n"
         "fi\n"
     )

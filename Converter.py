@@ -31,7 +31,11 @@ from media_compression import (
 )
 from document_converter import convert_document
 from file_types import file_types
-from image_converter import convert_image
+from image_converter import (
+    IMAGE_INPUT_EXTENSIONS,
+    convert_image,
+    convert_images_to_pdf,
+)
 from spreadsheet_converter import convert_spreadsheet
 from video_converter import convert_video
 
@@ -81,6 +85,12 @@ def IsActionSupportedForFile(
 ):
     action = convert_type.lower()
 
+    if action == "images_to_single_pdf":
+        return (
+            pathlib.Path(file_path).suffix.lower()
+            in IMAGE_INPUT_EXTENSIONS
+        )
+
     # Archive actions are generated separately from file_types.py.
     if (
         action == "archive_open_ui"
@@ -101,6 +111,121 @@ def IsActionSupportedForFile(
         ),
         action
     )
+
+
+def CreatePdfFromImages(
+    file_paths,
+):
+    from tkinter import filedialog
+
+    inputs = [
+        pathlib.Path(path)
+        .expanduser()
+        .resolve()
+        for path in file_paths
+    ]
+
+    if len(inputs) < 2:
+        raise ValueError(
+            "Select at least two images to combine into one PDF."
+        )
+
+    unsupported = [
+        str(path)
+        for path in inputs
+        if (
+            not path.is_file()
+            or path.suffix.lower()
+            not in IMAGE_INPUT_EXTENSIONS
+        )
+    ]
+
+    if unsupported:
+        raise ValueError(
+            "Only supported image files can be combined into one PDF.\n\n"
+            + unsupported[0]
+        )
+
+    first_parent = inputs[0].parent
+    same_parent = all(
+        path.parent == first_parent
+        for path in inputs
+    )
+
+    output_text = filedialog.asksaveasfilename(
+        title="Combine images into one PDF",
+        initialdir=(
+            str(first_parent)
+            if same_parent
+            else str(pathlib.Path.home())
+        ),
+        initialfile="Combined Images.pdf",
+        defaultextension=".pdf",
+        filetypes=[
+            (
+                "PDF document",
+                "*.pdf",
+            ),
+        ],
+    )
+
+    if not output_text:
+        return None
+
+    output = (
+        pathlib.Path(output_text)
+        .expanduser()
+        .resolve()
+    )
+
+    if output.suffix.lower() != ".pdf":
+        output = pathlib.Path(
+            str(output)
+            + ".pdf"
+        )
+
+    if output in inputs:
+        raise ValueError(
+            "The PDF output cannot overwrite one of the selected images."
+        )
+
+    if output.exists():
+        resolver = ConflictResolver()
+        decision = resolver.resolve(
+            inputs[0],
+            output,
+        )
+
+        if decision in {SKIP, CANCEL}:
+            return None
+
+        if decision == KEEP_BOTH:
+            output = unique_output_path(
+                output
+            )
+
+        elif decision != REPLACE:
+            raise ValueError(
+                "Unknown conflict decision: "
+                + str(decision)
+            )
+
+    convert_images_to_pdf(
+        inputs,
+        output,
+    )
+
+    messagebox.showinfo(
+        "UwUConverter",
+        (
+            "Combined "
+            + str(len(inputs))
+            + " images into:\n\n"
+            + str(output)
+        ),
+    )
+
+    return output
 
 
 def CreateZipFromSelection(
@@ -283,6 +408,25 @@ def ConvertFiles(
     convert_type
 ):
     action = convert_type.lower()
+
+    if action == "images_to_single_pdf":
+        output = CreatePdfFromImages(
+            file_paths
+        )
+
+        return {
+            "converted": (
+                len(file_paths)
+                if output is not None
+                else 0
+            ),
+            "skipped": (
+                0
+                if output is not None
+                else len(file_paths)
+            ),
+            "failed": 0,
+        }
 
     if action.startswith(
         "archive_extract_"

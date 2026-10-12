@@ -1,4 +1,4 @@
-"""3.2 regression tests. Run: python -m unittest discover -s tests -v"""
+"""Core regression tests. Run: python -m unittest discover -s tests -v"""
 import importlib.util
 import pathlib
 import sys
@@ -21,6 +21,8 @@ class SettingsTests(unittest.TestCase):
             config = settings.load_settings(path)
             self.assertTrue(settings.enabled("archive", config))
             self.assertTrue(settings.get_bool("Operations", "auto_close_success", True, config))
+            self.assertEqual(settings.get_float("Operations", "auto_close_delay", 0.65, config), 0.65)
+            self.assertTrue(settings.get_bool("Operations", "codec_fallback", True, config))
             config.add_section("ContextMenu")
             config.set("ContextMenu", "archive", "false")
             config.add_section("Operations")
@@ -157,21 +159,39 @@ class CodecTests(unittest.TestCase):
                 self.video.choose_encoder(['libx264'])
 
 
+    def test_codec_fallback_setting_is_read(self):
+        source = (ROOT / 'video_converter.py').read_text()
+        self.assertIn('"codec_fallback"', source)
+        self.assertIn('allow_fallback = get_bool(', source)
+
+
 class IntegrationTests(unittest.TestCase):
     def test_version_consistency(self):
         namespace = {}
         exec((ROOT / 'version.py').read_text(), namespace)
-        self.assertEqual(namespace['APP_VERSION'], '3.2.0')
-        self.assertIn('#define MyAppVersion "3.2.0"', (ROOT / 'installer.iss').read_text())
-        self.assertIn('Version="3.2.0.0"', (ROOT / 'windows_modern_shell/generated/package/AppxManifest.xml').read_text())
+        self.assertEqual(namespace['APP_VERSION'], '3.3.0')
+        self.assertIn('#define MyAppVersion "3.3.0"', (ROOT / 'installer.iss').read_text())
+        from windows_modern_shell.generate_package_manifest import four_part_version
+        self.assertEqual(four_part_version(namespace['APP_VERSION']), '3.3.0.0')
 
     def test_autoclose_success_only(self):
         text = (ROOT / 'archive_progress_ui.py').read_text()
         self.assertIn('if self.success and self.auto_close_success.get()', text)
-        self.assertIn('self.window.after(650, self.window.destroy)', text)
+        self.assertIn('"auto_close_delay"', text)
         self.assertIn('"auto_close_success", True', text)
         batch = (ROOT / 'batch_dialog.py').read_text()
         self.assertIn('payload["failed"] == 0 and get_bool(', batch)
+        self.assertIn('"auto_close_delay"', batch)
+
+    def test_settings_ui_has_tabs_and_controls(self):
+        text = (ROOT / 'settings_ui.py').read_text()
+        self.assertIn('ttk.Notebook', text)
+        self.assertIn('text="General"', text)
+        self.assertIn('text="Context Menu"', text)
+        self.assertIn('text="Integrations"', text)
+        self.assertIn('Automatically transcode unsupported media codecs', text)
+        self.assertIn('Save && Refresh Context Menus', text)
+        self.assertIn('Restore Defaults', text)
 
     def test_native_shell_honors_ini(self):
         cpp = (ROOT / 'windows_modern_shell/UwUConverterShell.cpp').read_text()
