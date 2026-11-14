@@ -141,6 +141,27 @@ class KdeMenuTests(unittest.TestCase):
 
 
 class ModernShellTests(unittest.TestCase):
+    def test_file_and_folder_roots_use_distinct_clsids(self):
+        manifest = (
+            ROOT / "windows_modern_shell/AppxManifest.xml.in"
+        ).read_text()
+        cpp = (
+            ROOT / "windows_modern_shell/UwUConverterShell.cpp"
+        ).read_text()
+
+        self.assertIn(
+            'Clsid="8460E4FC-B85D-4A8A-A662-C6FF3D7C4727"',
+            manifest,
+        )
+        self.assertIn(
+            'Clsid="4C8C6B95-1A31-4F1E-9A4F-8FAE8A07D9AF"',
+            manifest,
+        )
+        self.assertIn("CLSID_UwUConverterFileCommand", cpp)
+        self.assertIn("CLSID_UwUConverterFolderCommand", cpp)
+        self.assertIn("RootMatchesSelection", cpp)
+        self.assertIn("GetFileAttributesW", cpp)
+
     def test_modern_shell_requires_two_supported_images(self):
         cpp = (ROOT / "windows_modern_shell/UwUConverterShell.cpp").read_text()
         generated = (ROOT / "windows_modern_shell/generate_actions.py").read_text()

@@ -56,6 +56,10 @@
                 Id="8460E4FC-B85D-4A8A-A662-C6FF3D7C4727"
                 Path="modern-shell\UwUConverterShell.dll"
                 ThreadingModel="STA" />
+              <com:Class
+                Id="4C8C6B95-1A31-4F1E-9A4F-8FAE8A07D9AF"
+                Path="modern-shell\UwUConverterShell.dll"
+                ThreadingModel="STA" />
             </com:SurrogateServer>
           </com:ComServer>
         </com:Extension>
@@ -70,7 +74,7 @@
             <desktop5:ItemType Type="Directory">
               <desktop5:Verb
                 Id="UwUConverterFolders"
-                Clsid="8460E4FC-B85D-4A8A-A662-C6FF3D7C4727" />
+                Clsid="4C8C6B95-1A31-4F1E-9A4F-8FAE8A07D9AF" />
             </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>

@@ -19,11 +19,23 @@
 
 namespace {
 
-const CLSID CLSID_UwUConverterCommand = {
+const CLSID CLSID_UwUConverterFileCommand = {
     0x8460e4fc,
     0xb85d,
     0x4a8a,
     {0xa6, 0x62, 0xc6, 0xff, 0x3d, 0x7c, 0x47, 0x27},
+};
+
+const CLSID CLSID_UwUConverterFolderCommand = {
+    0x4c8c6b95,
+    0x1a31,
+    0x4f1e,
+    {0x9a, 0x4f, 0x8f, 0xae, 0x8a, 0x07, 0xd9, 0xaf},
+};
+
+enum class RootKind {
+    Files,
+    Folders,
 };
 
 HMODULE g_module = nullptr;
@@ -194,6 +206,37 @@ HRESULT ReadSelection(IShellItemArray* items, std::vector<SelectedItem>& output)
     }
 
     return output.empty() ? E_FAIL : S_OK;
+}
+
+bool RootMatchesSelection(
+    RootKind kind,
+    const std::vector<SelectedItem>& selection
+) {
+    if (selection.empty()) {
+        return false;
+    }
+
+    if (kind == RootKind::Files) {
+        // Windows can expose archives such as ZIP files through both the
+        // wildcard file registration and the Directory shell registration.
+        // Trust actual filesystem attributes instead of shell namespace type:
+        // a navigable ZIP is still a file, so only the file root stays visible.
+        return std::any_of(
+            selection.begin(),
+            selection.end(),
+            [](const SelectedItem& item) {
+                return !item.isFolder;
+            }
+        );
+    }
+
+    return std::all_of(
+        selection.begin(),
+        selection.end(),
+        [](const SelectedItem& item) {
+            return item.isFolder;
+        }
+    );
 }
 
 bool IsImagesToPdfAction(
@@ -623,7 +666,8 @@ private:
 
 class RootCommand final : public IExplorerCommand {
 public:
-    RootCommand() {
+    explicit RootCommand(RootKind kind)
+        : kind_(kind) {
         ++g_objectCount;
     }
 
@@ -685,7 +729,10 @@ public:
         if (!canonicalName) {
             return E_POINTER;
         }
-        *canonicalName = CLSID_UwUConverterCommand;
+        *canonicalName =
+            kind_ == RootKind::Files
+                ? CLSID_UwUConverterFileCommand
+                : CLSID_UwUConverterFolderCommand;
         return S_OK;
     }
 
@@ -700,6 +747,11 @@ public:
 
         std::vector<SelectedItem> selection;
         if (FAILED(ReadSelection(items, selection))) {
+            *state = ECS_HIDDEN;
+            return S_OK;
+        }
+
+        if (!RootMatchesSelection(kind_, selection)) {
             *state = ECS_HIDDEN;
             return S_OK;
         }
@@ -738,11 +790,13 @@ public:
 
 private:
     LONG references_ = 1;
+    RootKind kind_;
 };
 
 class CommandFactory final : public IClassFactory {
 public:
-    CommandFactory() {
+    explicit CommandFactory(RootKind kind)
+        : kind_(kind) {
         ++g_objectCount;
     }
 
@@ -785,7 +839,7 @@ public:
             return CLASS_E_NOAGGREGATION;
         }
 
-        auto* command = new (std::nothrow) RootCommand();
+        auto* command = new (std::nothrow) RootCommand(kind_);
         if (!command) {
             return E_OUTOFMEMORY;
         }
@@ -806,6 +860,7 @@ public:
 
 private:
     LONG references_ = 1;
+    RootKind kind_;
 };
 
 }  // namespace
@@ -835,11 +890,17 @@ extern "C" HRESULT __stdcall DllGetClassObject(
 
     *object = nullptr;
 
-    if (!IsEqualCLSID(clsid, CLSID_UwUConverterCommand)) {
+    RootKind kind;
+
+    if (IsEqualCLSID(clsid, CLSID_UwUConverterFileCommand)) {
+        kind = RootKind::Files;
+    } else if (IsEqualCLSID(clsid, CLSID_UwUConverterFolderCommand)) {
+        kind = RootKind::Folders;
+    } else {
         return CLASS_E_CLASSNOTAVAILABLE;
     }
 
-    auto* factory = new (std::nothrow) CommandFactory();
+    auto* factory = new (std::nothrow) CommandFactory(kind);
     if (!factory) {
         return E_OUTOFMEMORY;
     }
