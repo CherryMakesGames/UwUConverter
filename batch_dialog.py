@@ -6,7 +6,7 @@ from tkinter import messagebox
 from tkinter import ttk
 
 from batch_converter import batch_convert_folder, find_output_collisions, CATEGORY_EXTENSIONS
-from settings import get_bool
+from settings import get_bool, get_float
 from conflict_dialog import (
     CANCEL,
     show_output_conflict,
@@ -548,9 +548,34 @@ def open_batch_dialog(folder_path, category=None):
                                 else ""
                             )
                         )
-                    elif payload["failed"] == 0 and get_bool("Operations", "auto_close_success", True):
-                        status.config(text="Batch complete.")
-                        root.after(650, root.destroy)
+                    elif payload["failed"] == 0 and get_bool(
+                        "Operations",
+                        "auto_close_success",
+                        True,
+                    ):
+                        status.config(
+                            text="Batch complete."
+                        )
+
+                        delay_seconds = max(
+                            0.0,
+                            min(
+                                10.0,
+                                get_float(
+                                    "Operations",
+                                    "auto_close_delay",
+                                    0.65,
+                                ),
+                            ),
+                        )
+
+                        root.after(
+                            int(
+                                delay_seconds
+                                * 1000
+                            ),
+                            root.destroy,
+                        )
                     else:
                         status.config(text="Batch complete with errors." if payload["failed"] else "Batch complete.")
                         messagebox.showinfo(

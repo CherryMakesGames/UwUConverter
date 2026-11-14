@@ -9,7 +9,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 
-from settings import get_bool
+from settings import get_bool, get_float
 
 from archive_manager import (
     ArchiveOperationCancelled,
@@ -942,7 +942,25 @@ class ArchiveProgressWindow:
 
         # Keep failed/cancelled jobs visible for inspection.
         if self.success and self.auto_close_success.get():
-            self.window.after(650, self.window.destroy)
+            delay_seconds = max(
+                0.0,
+                min(
+                    10.0,
+                    get_float(
+                        "Operations",
+                        "auto_close_delay",
+                        0.65,
+                    ),
+                ),
+            )
+
+            self.window.after(
+                int(
+                    delay_seconds
+                    * 1000
+                ),
+                self.window.destroy,
+            )
 
     def _update_elapsed(self):
         if (

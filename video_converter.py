@@ -2,6 +2,8 @@
 from pathlib import Path
 import av
 
+from settings import get_bool
+
 # Codec identifiers returned by AV streams may have aliases; only copy known
 # container-safe pairs, otherwise transcode to a supported target pair.
 COPYABLE = {
@@ -57,18 +59,81 @@ def convert_video(file_path, output_file_path, output_format):
     destination = Path(output_file_path)
     if source.resolve() == destination.resolve():
         raise ValueError("Input and output paths must differ")
-    with av.open(str(source)) as input_file:
-        must_transcode = needs_transcoding(input_file, output_format)
+    allow_fallback = get_bool(
+        "Operations",
+        "codec_fallback",
+        True,
+    )
+
+    with av.open(
+        str(source)
+    ) as input_file:
+        must_transcode = (
+            needs_transcoding(
+                input_file,
+                output_format,
+            )
+        )
+
+    if (
+        must_transcode
+        and not allow_fallback
+    ):
+        raise RuntimeError(
+            "The input uses codecs that are not supported by "
+            + output_format.upper()
+            + ". Enable automatic codec fallback in Settings "
+            + "or choose another output container."
+        )
+
     if not must_transcode:
         try:
-            with av.open(str(source)) as input_file, av.open(str(destination), "w", format=("matroska" if output_format == "mkv" else output_format)) as output_file:
-                remux(input_file, output_file)
+            with (
+                av.open(
+                    str(source)
+                ) as input_file,
+                av.open(
+                    str(destination),
+                    "w",
+                    format=(
+                        "matroska"
+                        if output_format == "mkv"
+                        else output_format
+                    ),
+                ) as output_file,
+            ):
+                remux(
+                    input_file,
+                    output_file,
+                )
+
             return
-        except (av.AVError if hasattr(av, "AVError") else Exception, ValueError, OSError):
-            # Even a known codec may be rejected by the actual muxer. Retry
-            # from the original source, not from a partially written output.
-            destination.unlink(missing_ok=True)
-    video_names, audio_names = FALLBACK[output_format]
+
+        except (
+            av.AVError
+            if hasattr(
+                av,
+                "AVError",
+            )
+            else Exception,
+            ValueError,
+            OSError,
+        ) as error:
+            # Even a known codec may be rejected by the actual muxer.
+            destination.unlink(
+                missing_ok=True
+            )
+
+            if not allow_fallback:
+                raise RuntimeError(
+                    "The selected container rejected the source codecs. "
+                    "Enable automatic codec fallback in Settings "
+                    "to transcode them to a compatible format."
+                ) from error
+
+    video_names, audio_names = FALLBACK[
+        output_format
+    ]
     with av.open(str(source)) as input_file:
         has_video = any(s.type == "video" for s in input_file.streams)
         has_audio = any(s.type == "audio" for s in input_file.streams)
