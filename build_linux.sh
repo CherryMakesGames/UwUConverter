@@ -31,6 +31,7 @@ rm -rf build dist dist-cli dist-updater dist-browser-host dist-installer
   --windowed \
   --name UwUConverterGUI \
   --add-data "UwUConverter.ico:." \
+  --add-data "UwUConverter.png:." \
   Converter.py
 
 # Batch GUI.
@@ -80,6 +81,7 @@ rm -rf build dist dist-cli dist-updater dist-browser-host dist-installer
   --onefile \
   --windowed \
   --name UwUConverterInstaller \
+  --add-data "UwUConverter.png:." \
   --distpath dist-installer \
   linux_installer.py
 
@@ -103,6 +105,9 @@ cp dist-browser-host/UwUConverterBrowserHost \
 
 cp dist-installer/UwUConverterInstaller \
   dist/UwUConverterGUI/UwUConverterInstaller
+
+cp UwUConverter.png \
+  dist/UwUConverterGUI/UwUConverter.png
 
 
 mkdir -p dist/UwUConverterGUI/browser-extension

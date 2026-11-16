@@ -9,6 +9,7 @@ import sys
 
 
 APP_FOLDER_NAME = "UwUConverter"
+APP_ICON_NAME = "uwuconverter"
 
 SCRIPT_FOLDERS = {
     "Nautilus": pathlib.Path.home()
@@ -270,6 +271,94 @@ def RemoveExtensions(file_types=None):
         )
 
 
+def _discover_user_dolphin_service_folders():
+    folders = list(
+        DOLPHIN_SERVICE_FOLDERS
+    )
+    home = pathlib.Path.home().resolve()
+
+    for command_name in (
+        "qtpaths6",
+        "qtpaths",
+        "qtpaths-qt6",
+    ):
+        executable = shutil.which(
+            command_name
+        )
+
+        if not executable:
+            continue
+
+        try:
+            result = subprocess.run(
+                [
+                    executable,
+                    "--locate-dirs",
+                    "GenericDataLocation",
+                    "kio/servicemenus",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=4,
+                check=False,
+            )
+        except (
+            OSError,
+            subprocess.TimeoutExpired,
+        ):
+            continue
+
+        if result.returncode != 0:
+            continue
+
+        for raw_path in result.stdout.strip().split(
+            os.pathsep
+        ):
+            if not raw_path:
+                continue
+
+            candidate = pathlib.Path(
+                raw_path
+            ).expanduser()
+
+            try:
+                resolved = candidate.resolve()
+                resolved.relative_to(
+                    home
+                )
+            except (
+                OSError,
+                ValueError,
+            ):
+                # Never remove system-wide service menus from a user install.
+                continue
+
+            if resolved not in folders:
+                folders.append(
+                    resolved
+                )
+
+        break
+
+    return folders
+
+
+def _is_uwu_service_menu(path):
+    if "uwuconverter" in path.name.casefold():
+        return True
+
+    try:
+        content = path.read_text(
+            encoding="utf-8",
+            errors="ignore",
+        )
+    except OSError:
+        return False
+
+    return "uwuconverter" in content.casefold()
+
+
 def cleanup_linux_integrations():
     removed = []
 
@@ -291,16 +380,23 @@ def cleanup_linux_integrations():
 
                 removed.append(str(old_path))
 
-    for service_folder in DOLPHIN_SERVICE_FOLDERS:
+    # Remove every user-level service menu that belongs to UwUConverter,
+    # including the old universal menu and legacy files whose filename did not
+    # follow the current uwuconverter-*.desktop naming convention.
+    for service_folder in _discover_user_dolphin_service_folders():
         if not service_folder.exists():
             continue
 
         for path in service_folder.glob("*.desktop"):
-            if "uwuconverter" not in path.name.casefold():
+            if not _is_uwu_service_menu(path):
                 continue
 
             if path.is_file() or path.is_symlink():
-                path.unlink()
+                try:
+                    path.unlink()
+                except OSError:
+                    continue
+
                 removed.append(
                     str(path)
                 )
@@ -321,15 +417,29 @@ def refresh_kde_service_cache():
             continue
 
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [
                     executable,
+                    "--noincremental",
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                timeout=15,
                 check=False,
             )
-        except OSError:
+
+            if result.returncode != 0:
+                subprocess.run(
+                    [executable],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
+                    check=False,
+                )
+        except (
+            OSError,
+            subprocess.TimeoutExpired,
+        ):
             pass
 
         return
@@ -355,13 +465,15 @@ def create_dolphin_batch_gui_menu():
         [
             "[Desktop Entry]",
             "Type=Service",
+            "Icon=" + APP_ICON_NAME,
             "MimeType=inode/directory;",
+            "X-KDE-Protocols=file",
             "Actions=uwuBatchGui;",
             "X-KDE-Priority=TopLevel",
             "",
             "[Desktop Action uwuBatchGui]",
             "Name=Batch Convert With UwUConverter",
-            "Icon=document-convert",
+            "Icon=" + APP_ICON_NAME,
             "Exec=" + command + " %f",
             "",
         ]
@@ -503,9 +615,11 @@ def create_dolphin_file_menus(file_types):
         lines = [
             "[Desktop Entry]",
             "Type=Service",
+            "Icon=" + APP_ICON_NAME,
             "MimeType="
             + mime_type
             + ";",
+            "X-KDE-Protocols=file",
             "Actions="
             + ";".join(
                 action_ids
@@ -535,7 +649,7 @@ def create_dolphin_file_menus(file_types):
                 [
                     f"[Desktop Action {action_id}]",
                     "Name=" + label,
-                    "Icon=document-convert",
+                    "Icon=" + APP_ICON_NAME,
                     "Exec=" + command + " %F",
                     "",
                 ]
@@ -590,18 +704,20 @@ def create_dolphin_images_to_pdf_menu():
         [
             "[Desktop Entry]",
             "Type=Service",
+            "Icon=" + APP_ICON_NAME,
             "MimeType="
             + ";".join(
                 image_mime_types
             )
             + ";",
+            "X-KDE-Protocols=file",
             "Actions=uwuImagesToPdf;",
             "X-KDE-MinNumberOfUrls=2",
             "X-KDE-Priority=TopLevel",
             "",
             "[Desktop Action uwuImagesToPdf]",
             "Name=Combine Selected Images into One PDF With UwUConverter",
-            "Icon=application-pdf",
+            "Icon=" + APP_ICON_NAME,
             "Exec=" + command + " %F",
             "",
         ]
@@ -640,13 +756,15 @@ def create_dolphin_zip_selection_menu():
         [
             "[Desktop Entry]",
             "Type=Service",
+            "Icon=" + APP_ICON_NAME,
             "MimeType=application/octet-stream;inode/directory;",
+            "X-KDE-Protocols=file",
             "Actions=uwuCompressSelectionZip;",
             "X-KDE-Priority=TopLevel",
             "",
             "[Desktop Action uwuCompressSelectionZip]",
             "Name=Compress Selection to ZIP With UwUConverter",
-            "Icon=archive-insert",
+            "Icon=" + APP_ICON_NAME,
             "Exec=" + command + " %F",
             "",
         ]
@@ -708,7 +826,9 @@ def create_dolphin_archive_menu():
     lines = [
         "[Desktop Entry]",
         "Type=Service",
+        "Icon=" + APP_ICON_NAME,
         "MimeType=" + mime_line,
+        "X-KDE-Protocols=file",
         "Actions="
         + ";".join(
             action_id
@@ -733,7 +853,7 @@ def create_dolphin_archive_menu():
             [
                 f"[Desktop Action {action_id}]",
                 "Name=" + label,
-                "Icon=archive-extract",
+                "Icon=" + APP_ICON_NAME,
                 "Exec=" + command + " %F",
                 "",
             ]

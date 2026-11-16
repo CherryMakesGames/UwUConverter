@@ -377,18 +377,48 @@ class InstallerWindow:
             )
         )
         self.root.geometry(
-            "700x610"
+            "760x680"
             if not update_mode
-            else "700x500"
+            else "760x580"
         )
         self.root.minsize(
-            620,
-            450,
+            560,
+            420,
         )
         self.root.protocol(
             "WM_DELETE_WINDOW",
             self.on_close,
         )
+
+        self.window_icon = None
+        icon_candidates = [
+            self.package_dir / "UwUConverter.png",
+            pathlib.Path(
+                getattr(
+                    sys,
+                    "_MEIPASS",
+                    self.package_dir,
+                )
+            ) / "UwUConverter.png",
+            pathlib.Path(__file__).resolve().parent / "UwUConverter.png",
+        ]
+
+        for icon_path in icon_candidates:
+            if not icon_path.is_file():
+                continue
+
+            try:
+                self.window_icon = tk.PhotoImage(
+                    file=str(icon_path)
+                )
+                self.root.iconphoto(
+                    True,
+                    self.window_icon,
+                )
+            except tk.TclError:
+                self.window_icon = None
+
+            break
 
         self.cli_var = tk.BooleanVar(
             value=(
@@ -418,15 +448,217 @@ class InstallerWindow:
 
         outer = ttk.Frame(
             self.root,
-            padding=22,
+            padding=14,
         )
         outer.pack(
             fill="both",
             expand=True,
         )
 
+        # Keep status and action buttons outside the scrollable area so the
+        # Install/Update button is always reachable on small screens and KDE
+        # fractional-scaling setups.
+        footer = ttk.Frame(
+            outer
+        )
+        footer.pack(
+            side="bottom",
+            fill="x",
+            pady=(
+                10,
+                0,
+            ),
+        )
+
+        self.progress = ttk.Progressbar(
+            footer,
+            mode="indeterminate",
+        )
+
+        self.status_label = ttk.Label(
+            footer,
+            text="Ready.",
+            wraplength=680,
+        )
+        self.status_label.pack(
+            anchor="w",
+            pady=(
+                2,
+                8,
+            ),
+        )
+
+        button_frame = ttk.Frame(
+            footer
+        )
+        button_frame.pack(
+            fill="x",
+        )
+
+        self.cancel_button = ttk.Button(
+            button_frame,
+            text="Cancel",
+            command=self.on_close,
+        )
+        self.cancel_button.pack(
+            side="right",
+        )
+
+        self.install_button = ttk.Button(
+            button_frame,
+            text=(
+                "Update"
+                if self.update_mode
+                else "Install"
+            ),
+            command=self.start_install,
+        )
+        self.install_button.pack(
+            side="right",
+            padx=(
+                0,
+                8,
+            ),
+        )
+
+        body_shell = ttk.Frame(
+            outer
+        )
+        body_shell.pack(
+            side="top",
+            fill="both",
+            expand=True,
+        )
+
+        style = ttk.Style(
+            self.root
+        )
+        canvas_background = style.lookup(
+            "TFrame",
+            "background",
+        ) or self.root.cget(
+            "background"
+        )
+
+        canvas = self.tk.Canvas(
+            body_shell,
+            borderwidth=0,
+            highlightthickness=0,
+            background=canvas_background,
+        )
+        scrollbar = ttk.Scrollbar(
+            body_shell,
+            orient="vertical",
+            command=canvas.yview,
+        )
+        canvas.configure(
+            yscrollcommand=scrollbar.set
+        )
+
+        scrollbar.pack(
+            side="right",
+            fill="y",
+        )
+        canvas.pack(
+            side="left",
+            fill="both",
+            expand=True,
+        )
+
+        content = ttk.Frame(
+            canvas,
+            padding=(
+                8,
+                8,
+                12,
+                8,
+            ),
+        )
+        content_window = canvas.create_window(
+            (0, 0),
+            window=content,
+            anchor="nw",
+        )
+
+        def update_scroll_region(_event=None):
+            bounds = canvas.bbox(
+                "all"
+            )
+            if bounds:
+                canvas.configure(
+                    scrollregion=bounds
+                )
+
+        def fit_content_width(event):
+            canvas.itemconfigure(
+                content_window,
+                width=event.width,
+            )
+
+        def mouse_wheel(event):
+            if getattr(
+                event,
+                "num",
+                None,
+            ) == 4:
+                canvas.yview_scroll(
+                    -3,
+                    "units",
+                )
+                return "break"
+
+            if getattr(
+                event,
+                "num",
+                None,
+            ) == 5:
+                canvas.yview_scroll(
+                    3,
+                    "units",
+                )
+                return "break"
+
+            delta = getattr(
+                event,
+                "delta",
+                0,
+            )
+            if delta:
+                canvas.yview_scroll(
+                    -1
+                    if delta > 0
+                    else 1,
+                    "units",
+                )
+                return "break"
+
+            return None
+
+        content.bind(
+            "<Configure>",
+            update_scroll_region,
+        )
+        canvas.bind(
+            "<Configure>",
+            fit_content_width,
+        )
+        canvas.bind(
+            "<MouseWheel>",
+            mouse_wheel,
+        )
+        canvas.bind(
+            "<Button-4>",
+            mouse_wheel,
+        )
+        canvas.bind(
+            "<Button-5>",
+            mouse_wheel,
+        )
+
+        self.content_canvas = canvas
+
         title = ttk.Label(
-            outer,
+            content,
             text=(
                 "Update UwUConverter"
                 if self.update_mode
@@ -443,7 +675,7 @@ class InstallerWindow:
         )
 
         subtitle = ttk.Label(
-            outer,
+            content,
             text=(
                 "The update will replace the installed files and "
                 "refresh Linux file-manager and browser integrations."
@@ -452,7 +684,7 @@ class InstallerWindow:
                 "Install UwUConverter for your user account. "
                 "No system-wide Python installation is required."
             ),
-            wraplength=640,
+            wraplength=680,
             justify="left",
         )
         subtitle.pack(
@@ -464,7 +696,7 @@ class InstallerWindow:
         )
 
         destination_frame = ttk.LabelFrame(
-            outer,
+            content,
             text="Installation",
             padding=12,
         )
@@ -480,7 +712,7 @@ class InstallerWindow:
                     app_directory()
                 )
             ),
-            wraplength=620,
+            wraplength=660,
         ).pack(
             anchor="w",
         )
@@ -492,7 +724,7 @@ class InstallerWindow:
                 "file-manager context menus, native browser bridge, "
                 "and archive support."
             ),
-            wraplength=620,
+            wraplength=660,
         ).pack(
             anchor="w",
             pady=(
@@ -502,7 +734,7 @@ class InstallerWindow:
         )
 
         options_frame = ttk.LabelFrame(
-            outer,
+            content,
             text="Options",
             padding=12,
         )
@@ -542,7 +774,7 @@ class InstallerWindow:
 
         if not self.update_mode:
             browser_frame = ttk.LabelFrame(
-                outer,
+                content,
                 text="Browser extensions",
                 padding=12,
             )
@@ -561,7 +793,7 @@ class InstallerWindow:
                         "Select the detected browsers where "
                         "you want the UwUConverter extension:"
                     ),
-                    wraplength=620,
+                    wraplength=660,
                 ).pack(
                     anchor="w",
                     pady=(
@@ -570,23 +802,15 @@ class InstallerWindow:
                     ),
                 )
 
-                for browser in (
-                    self.detected_browsers
-                ):
+                for browser in self.detected_browsers:
                     suffix = (
                         " (Flatpak)"
-                        if browser[
-                            "flatpak"
-                        ]
+                        if browser["flatpak"]
                         else ""
                     )
-
-                    variable = (
-                        self.tk.BooleanVar(
-                            value=True
-                        )
+                    variable = self.tk.BooleanVar(
+                        value=True
                     )
-
                     self.browser_vars[
                         browser["id"]
                     ] = variable
@@ -609,7 +833,7 @@ class InstallerWindow:
                         "stores, Setup opens the extensions page and the "
                         "bundled extension folder for the selected browsers."
                     ),
-                    wraplength=620,
+                    wraplength=660,
                 ).pack(
                     anchor="w",
                     pady=(
@@ -624,22 +848,20 @@ class InstallerWindow:
                         "No supported browsers were detected. "
                         "The native browser host will still be installed."
                     ),
-                    wraplength=620,
+                    wraplength=660,
                 ).pack(
                     anchor="w",
                 )
 
-        self.progress = ttk.Progressbar(
-            outer,
-            mode="indeterminate",
-        )
-
-        self.status_label = ttk.Label(
-            outer,
-            text="Ready.",
-            wraplength=620,
-        )
-        self.status_label.pack(
+        ttk.Label(
+            content,
+            text="Installation log",
+            font=(
+                "TkDefaultFont",
+                10,
+                "bold",
+            ),
+        ).pack(
             anchor="w",
             pady=(
                 16,
@@ -648,51 +870,16 @@ class InstallerWindow:
         )
 
         self.log_text = self.tk.Text(
-            outer,
+            content,
             height=7,
             wrap="word",
             state="disabled",
         )
-
         self.log_text.pack(
-            fill="both",
-            expand=True,
-            pady=(
-                4,
-                12,
-            ),
-        )
-
-        button_frame = ttk.Frame(
-            outer
-        )
-        button_frame.pack(
             fill="x",
-        )
-
-        self.cancel_button = ttk.Button(
-            button_frame,
-            text="Cancel",
-            command=self.on_close,
-        )
-        self.cancel_button.pack(
-            side="right",
-        )
-
-        self.install_button = ttk.Button(
-            button_frame,
-            text=(
-                "Update"
-                if self.update_mode
-                else "Install"
-            ),
-            command=self.start_install,
-        )
-        self.install_button.pack(
-            side="right",
-            padx=(
+            pady=(
                 0,
-                8,
+                4,
             ),
         )
 

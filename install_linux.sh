@@ -46,14 +46,18 @@ if [ "$UPDATE_MODE" -eq 1 ] &&    [ "$FROM_GUI" -eq 0 ] &&    [ -x "$SCRIPT_DIR/
 
     exec "$SCRIPT_DIR/UwUConverterInstaller" "${INSTALLER_ARGS[@]}"
 fi
-APP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/UwUConverter"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+APP_DIR="$DATA_HOME/UwUConverter"
 BIN_DIR="$HOME/.local/bin"
 AUTOSTART_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
 AUTOSTART_FILE="$AUTOSTART_DIR/uwuconverter-updater.desktop"
+ICON_DIR="$DATA_HOME/icons/hicolor/128x128/apps"
+ICON_FILE="$ICON_DIR/uwuconverter.png"
 
 mkdir -p "$APP_DIR"
 mkdir -p "$BIN_DIR"
 mkdir -p "$AUTOSTART_DIR"
+mkdir -p "$ICON_DIR"
 
 # Copy the packaged application folder into a stable user location.
 # cp -a intentionally overlays the previous install during an update.
@@ -68,6 +72,24 @@ chmod +x "$APP_DIR/UwUConverterUpdater" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterBrowserHost" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterInstaller" 2>/dev/null || true
 chmod +x "$APP_DIR/cli/UwUConverter" 2>/dev/null || true
+
+# Install a native Linux icon so KDE/Dolphin can display the UwUConverter logo
+# instead of a generic conversion icon.
+ICON_SOURCE=""
+for candidate in     "$APP_DIR/UwUConverter.png"     "$APP_DIR/_internal/UwUConverter.png"; do
+    if [ -f "$candidate" ]; then
+        ICON_SOURCE="$candidate"
+        break
+    fi
+done
+
+if [ -n "$ICON_SOURCE" ]; then
+    cp -f "$ICON_SOURCE" "$ICON_FILE"
+fi
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t "$DATA_HOME/icons/hicolor" >/dev/null 2>&1 || true
+fi
 
 if [ "$INSTALL_CLI" -eq 1 ]; then
     ln -sfn "$APP_DIR/cli/UwUConverter" "$BIN_DIR/UwUConverter"
@@ -200,8 +222,11 @@ offer_browser_integrations() {
     offer_flatpak_browser "Firefox" "org.mozilla.firefox" "about:debugging#/runtime/this-firefox" "firefox"
 }
 
-# Refresh file-manager and native browser-host integrations using the newly installed build.
-"$APP_DIR/UwUConverterGUI"
+# Refresh file-manager and native browser-host integrations using the newly
+# installed build. No-argument launch opens Settings as of 3.2+, so setup must
+# be explicit. This also removes stale universal Dolphin menus from older builds
+# and regenerates archive actions with the stable installed executable path.
+"$APP_DIR/UwUConverterGUI" --setup-integrations
 
 # Browser questions are part of the initial Linux installer itself.
 # Updates skip them so users are not asked again on every update.
