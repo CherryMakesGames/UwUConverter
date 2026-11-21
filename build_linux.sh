@@ -21,6 +21,32 @@ fi
 "$BUILD_PYTHON" -m pip install --upgrade pip
 "$BUILD_PYTHON" -m pip install -r requirements.txt
 
+# Linux uses PNG icons, but UwUConverter.ico is the single source of truth.
+# Generate the PNG for every build so a stale checked-in PNG can never drift
+# away from the current application logo.
+BUILD_ASSET_DIR=".uwu-build-assets"
+GENERATED_ICON="$BUILD_ASSET_DIR/UwUConverter.png"
+rm -rf "$BUILD_ASSET_DIR"
+mkdir -p "$BUILD_ASSET_DIR"
+
+"$BUILD_PYTHON" - <<'PYICON'
+from pathlib import Path
+from PIL import Image
+
+source = Path("UwUConverter.ico")
+target = Path(".uwu-build-assets/UwUConverter.png")
+
+if not source.is_file():
+    raise SystemExit("UwUConverter.ico is missing")
+
+with Image.open(source) as image:
+    image.seek(0)
+    rgba = image.convert("RGBA")
+    rgba.save(target, "PNG")
+
+print(target)
+PYICON
+
 rm -rf build dist dist-cli dist-updater dist-browser-host dist-installer
 
 # GUI used for file-manager registration and right-click conversions.
@@ -31,17 +57,8 @@ rm -rf build dist dist-cli dist-updater dist-browser-host dist-installer
   --windowed \
   --name UwUConverterGUI \
   --add-data "UwUConverter.ico:." \
-  --add-data "UwUConverter.png:." \
+  --add-data "$GENERATED_ICON:." \
   Converter.py
-
-# Batch GUI.
-"$BUILD_PYTHON" -m PyInstaller \
-  --clean \
-  --noconfirm \
-  --onefile \
-  --windowed \
-  --name UwUConverterBatch \
-  BatchLauncher.py
 
 # CLI.
 "$BUILD_PYTHON" -m PyInstaller \
@@ -81,7 +98,7 @@ rm -rf build dist dist-cli dist-updater dist-browser-host dist-installer
   --onefile \
   --windowed \
   --name UwUConverterInstaller \
-  --add-data "UwUConverter.png:." \
+  --add-data "$GENERATED_ICON:." \
   --distpath dist-installer \
   linux_installer.py
 
@@ -90,9 +107,6 @@ rm -rf build dist dist-cli dist-updater dist-browser-host dist-installer
 "$BUILD_PYTHON" build_browser_extensions.py
 
 mkdir -p dist/UwUConverterGUI/cli
-
-cp dist/UwUConverterBatch \
-  dist/UwUConverterGUI/UwUConverterBatch
 
 cp dist-cli/UwUConverter \
   dist/UwUConverterGUI/cli/UwUConverter
@@ -106,7 +120,7 @@ cp dist-browser-host/UwUConverterBrowserHost \
 cp dist-installer/UwUConverterInstaller \
   dist/UwUConverterGUI/UwUConverterInstaller
 
-cp UwUConverter.png \
+cp "$GENERATED_ICON" \
   dist/UwUConverterGUI/UwUConverter.png
 
 
@@ -123,7 +137,6 @@ cp uninstall_linux.sh \
   dist/UwUConverterGUI/uninstall.sh
 
 chmod +x dist/UwUConverterGUI/UwUConverterGUI
-chmod +x dist/UwUConverterGUI/UwUConverterBatch
 chmod +x dist/UwUConverterGUI/UwUConverterUpdater
 chmod +x dist/UwUConverterGUI/UwUConverterBrowserHost
 chmod +x dist/UwUConverterGUI/UwUConverterInstaller

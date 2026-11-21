@@ -4,14 +4,15 @@ import os
 import pathlib
 import re
 import struct
+import subprocess
 import sys
 import tempfile
 import urllib.parse
 import urllib.request
 from email.message import Message
 
-from image_converter import convert_image
 from ssl_context import create_verified_ssl_context
+from version import APP_VERSION
 
 
 HOST_NAME = "com.uwuconverter.browser"
@@ -277,7 +278,7 @@ def _data_url_bytes(url):
 def _download_http_image(url, page_url):
     headers = {
         "User-Agent": (
-            "Mozilla/5.0 UwUConverter/3.3.0 "
+            "Mozilla/5.0 UwUConverter/" + APP_VERSION + " "
             "(+browser native host)"
         ),
         "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
@@ -384,6 +385,47 @@ def download_image_bytes(url, page_url=None):
     )
 
 
+
+def _main_converter_command():
+    """Return the already-installed main converter command.
+
+    Keeping image conversion in the main onedir bundle means the native
+    browser host remains a tiny stdlib-only process instead of embedding a
+    second copy of Pillow/rawpy and their native dependencies.
+    """
+    if getattr(sys, "frozen", False):
+        application_directory = pathlib.Path(
+            sys.executable
+        ).resolve().parent
+
+        executable_name = (
+            "UwUConverter.exe"
+            if sys.platform == "win32"
+            else "UwUConverterGUI"
+        )
+        executable = (
+            application_directory
+            / executable_name
+        )
+
+        if not executable.is_file():
+            raise FileNotFoundError(
+                "UwUConverter main executable was not found: "
+                + str(executable)
+            )
+
+        return [str(executable)]
+
+    converter_script = (
+        pathlib.Path(__file__)
+        .resolve()
+        .with_name("Converter.py")
+    )
+    return [
+        sys.executable,
+        str(converter_script),
+    ]
+
 def download_and_convert_image(
     url,
     output_format,
@@ -419,11 +461,48 @@ def download_and_convert_image(
         ) / "source-image"
         input_path.write_bytes(image_bytes)
 
-        convert_image(
+        error_path = pathlib.Path(
+            temporary_directory
+        ) / "conversion-error.txt"
+
+        command = _main_converter_command() + [
+            "__BROWSER_CONVERT__",
             str(input_path),
             str(output_path),
             output_format,
+            str(error_path),
+        ]
+
+        result = subprocess.run(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
         )
+
+        if (
+            result.returncode != 0
+            or not output_path.is_file()
+            or output_path.stat().st_size <= 0
+        ):
+            try:
+                details = error_path.read_text(
+                    encoding="utf-8",
+                    errors="replace",
+                ).strip()
+            except OSError:
+                details = ""
+
+            try:
+                output_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+            raise RuntimeError(
+                details
+                or "UwUConverter could not convert the downloaded image."
+            )
 
     return output_path
 

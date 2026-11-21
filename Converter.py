@@ -1,46 +1,50 @@
 import pathlib
 import sys
 import traceback
-from tkinter import messagebox
-
-import av
-
-from archive_progress_ui import (
-    show_create_archive_progress,
-    show_extract_archives_progress,
-)
-from archive_ui import open_archive_manager
-from audio_converter import convert_audio
-from duplicate_detection import DuplicateDetector
-from conflict_dialog import (
-    CANCEL,
-    KEEP_BOTH,
-    REPLACE,
-    SKIP,
-    ConflictResolver,
-    unique_output_path,
-)
-from batch_converter import batch_convert_folder
-from batch_dialog import open_batch_dialog
-from media_compression import (
-    compress_video_lossless,
-    compress_video_by_percent,
-    compress_image_lossless,
-    compress_image_by_percent,
-    get_output_path,
-)
-from document_converter import convert_document
-from file_types import file_types
-from image_converter import (
-    IMAGE_INPUT_EXTENSIONS,
-    convert_image,
-    convert_images_to_pdf,
-)
-from spreadsheet_converter import convert_spreadsheet
-from video_converter import convert_video
 
 
-av.logging.set_level(av.logging.VERBOSE)
+CANCEL = "cancel"
+
+IMAGE_INPUT_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".ico",
+    ".tif",
+    ".tiff",
+    ".raw",
+}
+
+OUTPUT_EXTENSIONS = {
+    "png": ".png",
+    "jpg": ".jpg",
+    "jpeg": ".jpeg",
+    "webp": ".webp",
+    "ico": ".ico",
+    "tif": ".tif",
+    "tiff": ".tiff",
+    "pdf": ".pdf",
+    "mp4": ".mp4",
+    "mkv": ".mkv",
+    "mov": ".mov",
+    "avi": ".avi",
+    "webm": ".webm",
+    "mp3": ".mp3",
+    "wav": ".wav",
+    "ogg": ".ogg",
+    "flac": ".flac",
+    "opus": ".opus",
+    "obj": ".obj",
+    "stl": ".stl",
+    "ply": ".ply",
+    "glb": ".glb",
+}
+
+
+def _file_types():
+    from file_types import file_types
+    return file_types
 
 
 VIDEO_OUTPUTS = {
@@ -105,7 +109,7 @@ def IsActionSupportedForFile(
     ).suffix.lower()
 
     return _menu_contains_action(
-        file_types.get(
+        _file_types().get(
             extension,
             []
         ),
@@ -116,7 +120,16 @@ def IsActionSupportedForFile(
 def CreatePdfFromImages(
     file_paths,
 ):
-    from tkinter import filedialog
+    from tkinter import filedialog, messagebox
+    from conflict_dialog import (
+        CANCEL,
+        KEEP_BOTH,
+        REPLACE,
+        SKIP,
+        ConflictResolver,
+        unique_output_path,
+    )
+    from image_converter import convert_images_to_pdf
 
     inputs = [
         pathlib.Path(path)
@@ -232,6 +245,15 @@ def CreateZipFromSelection(
     file_paths,
 ):
     from tkinter import filedialog
+    from archive_progress_ui import show_create_archive_progress
+    from conflict_dialog import (
+        CANCEL,
+        KEEP_BOTH,
+        REPLACE,
+        SKIP,
+        ConflictResolver,
+        unique_output_path,
+    )
 
     inputs = [
         pathlib.Path(path)
@@ -358,6 +380,14 @@ def ResolveOutputConflict(
     output_path,
     conflict_resolver=None,
 ):
+    from conflict_dialog import (
+        CANCEL,
+        KEEP_BOTH,
+        REPLACE,
+        SKIP,
+        ConflictResolver,
+        unique_output_path,
+    )
     source = pathlib.Path(
         source_path
     ).expanduser().resolve()
@@ -407,6 +437,9 @@ def ConvertFiles(
     file_paths,
     convert_type
 ):
+    from conflict_dialog import ConflictResolver
+    from duplicate_detection import DuplicateDetector
+
     action = convert_type.lower()
 
     if action == "images_to_single_pdf":
@@ -441,6 +474,8 @@ def ConvertFiles(
         ]
 
         if archives:
+            from archive_progress_ui import show_extract_archives_progress
+
             success = (
                 show_extract_archives_progress(
                     archives,
@@ -468,7 +503,6 @@ def ConvertFiles(
     # Warn once before converting mixed extensions with the same basename.
     # Content-identical input files are detected independently below.
     if action in (VIDEO_OUTPUTS | AUDIO_OUTPUTS | IMAGE_OUTPUTS | MODEL_OUTPUTS):
-        from batch_converter import find_output_collisions, OUTPUT_EXTENSIONS
         if action in OUTPUT_EXTENSIONS:
             supported = [path for path in file_paths if IsActionSupportedForFile(path, action)]
             # Compare per-directory targets, not just basenames, for files
@@ -480,6 +514,8 @@ def ConvertFiles(
                 planned.setdefault(target, []).append(source.name)
             collisions = {key: names for key, names in planned.items() if len(names) > 1}
             if collisions:
+                from tkinter import messagebox
+
                 samples = [", ".join(names) for names in list(collisions.values())[:5]]
                 if not messagebox.askyesno(
                     "Duplicate output filenames",
@@ -571,10 +607,12 @@ def ConvertFile(
     action = convert_type.lower()
 
     if action == "batch_ui_all":
+        from batch_dialog import open_batch_dialog
         open_batch_dialog(file_path)
         return
 
     if action.startswith("batch_ui_"):
+        from batch_dialog import open_batch_dialog
         open_batch_dialog(
             file_path,
             action.removeprefix("batch_ui_")
@@ -582,6 +620,7 @@ def ConvertFile(
         return
 
     if action.startswith("batch_"):
+        from batch_converter import batch_convert_folder
         batch_convert_folder(
             file_path,
             action
@@ -597,6 +636,8 @@ def ConvertFile(
     )
 
     if action in VIDEO_OUTPUTS:
+        from video_converter import convert_video
+
         output_path = ResolveOutputConflict(
             file_path,
             output_base + "." + action,
@@ -617,6 +658,8 @@ def ConvertFile(
         return "converted"
 
     if action in AUDIO_OUTPUTS:
+        from audio_converter import convert_audio
+
         output_path = ResolveOutputConflict(
             file_path,
             output_base + "." + action,
@@ -643,6 +686,8 @@ def ConvertFile(
             ".webp", ".ico", ".tif", ".tiff", ".raw"
         }
     ):
+        from image_converter import convert_image
+
         output_path = ResolveOutputConflict(
             file_path,
             output_base + "." + action,
@@ -698,6 +743,7 @@ def ConvertFile(
 
 
     if action == "archive_open_ui":
+        from archive_ui import open_archive_manager
         open_archive_manager(
             file_path
         )
@@ -712,6 +758,7 @@ def ConvertFile(
     }
 
     if action in archive_actions:
+        from archive_progress_ui import show_extract_archives_progress
         show_extract_archives_progress(
             [
                 file_path
@@ -728,6 +775,12 @@ def ConvertFile(
     }
 
     if action in video_compression:
+        from media_compression import (
+            compress_video_lossless,
+            compress_video_by_percent,
+            get_output_path,
+        )
+
         percent = video_compression[action]
 
         suffix = (
@@ -778,6 +831,12 @@ def ConvertFile(
     }
 
     if action in image_compression:
+        from media_compression import (
+            compress_image_lossless,
+            compress_image_by_percent,
+            get_output_path,
+        )
+
         percent = image_compression[action]
 
         suffix = (
@@ -829,6 +888,8 @@ def ConvertFile(
     }
 
     if action in document_actions:
+        from document_converter import convert_document
+
         suffix, output_format = (
             document_actions[action]
         )
@@ -861,6 +922,8 @@ def ConvertFile(
     }
 
     if action in spreadsheet_actions:
+        from spreadsheet_converter import convert_spreadsheet
+
         suffix, output_format = (
             spreadsheet_actions[action]
         )
@@ -891,9 +954,36 @@ def ConvertFile(
 
 if __name__ == "__main__":
     if (
+        len(sys.argv) >= 6
+        and sys.argv[1] == "__BROWSER_CONVERT__"
+    ):
+        error_path = pathlib.Path(sys.argv[5])
+
+        try:
+            from image_converter import convert_image
+
+            convert_image(
+                sys.argv[2],
+                sys.argv[3],
+                sys.argv[4].lower(),
+            )
+        except Exception:
+            try:
+                error_path.write_text(
+                    traceback.format_exc(),
+                    encoding="utf-8",
+                )
+            except OSError:
+                pass
+            raise SystemExit(1)
+
+        raise SystemExit(0)
+
+    if (
         len(sys.argv) > 2
         and sys.argv[1] == "__BATCH_GUI__"
     ):
+        from batch_dialog import open_batch_dialog
         open_batch_dialog(sys.argv[2])
         raise SystemExit
 
@@ -917,7 +1007,7 @@ if __name__ == "__main__":
             import platform_menu
 
             platform_menu.RemoveExtensions(
-                file_types
+                _file_types()
             )
 
         elif is_opening_settings:
@@ -928,7 +1018,7 @@ if __name__ == "__main__":
             import platform_menu
 
             platform_menu.CreateExtensions(
-                file_types
+                _file_types()
             )
 
         elif (
@@ -966,6 +1056,7 @@ if __name__ == "__main__":
 
         if not is_uninstalling:
             try:
+                from tkinter import messagebox
                 messagebox.showerror(
                     "UwUConverter conversion failed",
                     error_text

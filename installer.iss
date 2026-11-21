@@ -1,5 +1,5 @@
 #define MyAppName "UwUConverter"
-#define MyAppVersion "3.3.0"
+#define MyAppVersion "3.5.0"
 #define MyAppPublisher "Pink Sakura Studios"
 #define SevenZipVersion "26.02"
 #define SevenZipInstaller "7z2602-x64.exe"
@@ -38,6 +38,10 @@ Source: "dist\UwUConverterUpdater.exe"; DestDir: "{app}"; DestName: "UwUConverte
 Source: "dist-browser-host\UwUConverterBrowserHost.exe"; DestDir: "{app}"; DestName: "UwUConverterBrowserHost.exe"; Flags: ignoreversion
 
 
+
+[InstallDelete]
+; 3.5 no longer ships a second PyInstaller bundle for the batch window.
+Type: files; Name: "{app}\UwUConverterBatch.exe"
 
 [Icons]
 Name: "{autoprograms}\UwUConverter Settings"; Filename: "{app}\UwUConverter.exe"; Parameters: "--settings"; WorkingDir: "{app}"

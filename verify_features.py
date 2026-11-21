@@ -195,7 +195,7 @@ def test_linux_install_uninstall_runtime():
         shutil.copy2(ROOT / "install_linux.sh", package / "install.sh")
         shutil.copy2(ROOT / "uninstall_linux.sh", package / "uninstall.sh")
 
-        for name in ["UwUConverterGUI", "UwUConverterBatch", "UwUConverterUpdater"]:
+        for name in ["UwUConverterGUI", "UwUConverterUpdater"]:
             path = package / name
             path.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
             path.chmod(0o755)
@@ -452,7 +452,6 @@ def test_document_conversion():
 
 
 def test_spreadsheet_conversion():
-    require_module("pandas")
     require_module("openpyxl")
     require_module("odf")
     require_module("reportlab")

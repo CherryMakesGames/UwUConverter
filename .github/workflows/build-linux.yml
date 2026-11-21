@@ -33,7 +33,7 @@ jobs:
           chmod +x ./build_linux.sh
           ./build_linux.sh
 
-      - name: Run UwUConverter 3.2 regression tests
+      - name: Run UwUConverter 3.5 regression tests
         shell: bash
         run: |
           BUILD_PYTHON=".uwu-build-venv/bin/python"
@@ -48,7 +48,6 @@ jobs:
           PACKAGE_DIR="dist/UwUConverterGUI"
 
           test -x "$PACKAGE_DIR/UwUConverterGUI"
-          test -x "$PACKAGE_DIR/UwUConverterBatch"
           test -x "$PACKAGE_DIR/UwUConverterUpdater"
           test -x "$PACKAGE_DIR/UwUConverterBrowserHost"
           test -x "$PACKAGE_DIR/UwUConverterInstaller"

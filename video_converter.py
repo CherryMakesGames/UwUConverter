@@ -55,53 +55,58 @@ def convert_video(file_path, output_file_path, output_format):
     output_format = output_format.lower()
     if output_format not in FALLBACK:
         raise ValueError("Unsupported video output format: " + output_format)
+
     source = Path(file_path)
     destination = Path(output_file_path)
+
     if source.resolve() == destination.resolve():
         raise ValueError("Input and output paths must differ")
+
     allow_fallback = get_bool(
         "Operations",
         "codec_fallback",
         True,
     )
+    container_format = (
+        "matroska"
+        if output_format == "mkv"
+        else output_format
+    )
 
-    with av.open(
-        str(source)
-    ) as input_file:
-        must_transcode = (
-            needs_transcoding(
+    # Inspect streams and perform the normal conversion using the same open
+    # input container.  The old path opened every source once for probing and
+    # then again for the actual work (and a third time before transcoding).
+    # Avoiding those extra opens is particularly noticeable in large batches
+    # and on network/removable storage.
+    with av.open(str(source)) as input_file:
+        must_transcode = needs_transcoding(
+            input_file,
+            output_format,
+        )
+
+        if must_transcode:
+            if not allow_fallback:
+                raise RuntimeError(
+                    "The input uses codecs that are not supported by "
+                    + output_format.upper()
+                    + ". Enable automatic codec fallback in Settings "
+                    + "or choose another output container."
+                )
+
+            _transcode_input(
                 input_file,
+                destination,
                 output_format,
+                container_format,
             )
-        )
+            return
 
-    if (
-        must_transcode
-        and not allow_fallback
-    ):
-        raise RuntimeError(
-            "The input uses codecs that are not supported by "
-            + output_format.upper()
-            + ". Enable automatic codec fallback in Settings "
-            + "or choose another output container."
-        )
-
-    if not must_transcode:
         try:
-            with (
-                av.open(
-                    str(source)
-                ) as input_file,
-                av.open(
-                    str(destination),
-                    "w",
-                    format=(
-                        "matroska"
-                        if output_format == "mkv"
-                        else output_format
-                    ),
-                ) as output_file,
-            ):
+            with av.open(
+                str(destination),
+                "w",
+                format=container_format,
+            ) as output_file:
                 remux(
                     input_file,
                     output_file,
@@ -111,18 +116,15 @@ def convert_video(file_path, output_file_path, output_format):
 
         except (
             av.AVError
-            if hasattr(
-                av,
-                "AVError",
-            )
+            if hasattr(av, "AVError")
             else Exception,
             ValueError,
             OSError,
         ) as error:
-            # Even a known codec may be rejected by the actual muxer.
-            destination.unlink(
-                missing_ok=True
-            )
+            # Even a known codec may be rejected by the actual muxer.  At
+            # this point the input may have been partially consumed, so only
+            # this uncommon fallback case needs to reopen it.
+            destination.unlink(missing_ok=True)
 
             if not allow_fallback:
                 raise RuntimeError(
@@ -131,16 +133,55 @@ def convert_video(file_path, output_file_path, output_format):
                     "to transcode them to a compatible format."
                 ) from error
 
+    with av.open(str(source)) as input_file:
+        _transcode_input(
+            input_file,
+            destination,
+            output_format,
+            container_format,
+        )
+
+
+def _transcode_input(
+    input_file,
+    destination,
+    output_format,
+    container_format,
+):
+    has_video = any(
+        stream.type == "video"
+        for stream in input_file.streams
+    )
+    has_audio = any(
+        stream.type == "audio"
+        for stream in input_file.streams
+    )
+
     video_names, audio_names = FALLBACK[
         output_format
     ]
-    with av.open(str(source)) as input_file:
-        has_video = any(s.type == "video" for s in input_file.streams)
-        has_audio = any(s.type == "audio" for s in input_file.streams)
-    vencoder = choose_encoder(video_names) if has_video else None
-    aencoder = choose_encoder(audio_names) if has_audio else None
-    with av.open(str(source)) as input_file, av.open(str(destination), "w", format=("matroska" if output_format == "mkv" else output_format)) as output_file:
-        transcode(input_file, output_file, vencoder, aencoder)
+    video_encoder = (
+        choose_encoder(video_names)
+        if has_video
+        else None
+    )
+    audio_encoder = (
+        choose_encoder(audio_names)
+        if has_audio
+        else None
+    )
+
+    with av.open(
+        str(destination),
+        "w",
+        format=container_format,
+    ) as output_file:
+        transcode(
+            input_file,
+            output_file,
+            video_encoder,
+            audio_encoder,
+        )
 
 
 def remux(input_file, output_file):

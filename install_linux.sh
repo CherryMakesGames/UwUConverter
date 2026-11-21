@@ -66,8 +66,11 @@ if [ "$SCRIPT_DIR" != "$APP_DIR" ]; then
     cp -a "$SCRIPT_DIR/." "$APP_DIR/"
 fi
 
+# UwUConverter 3.5 routes batch UI through the main executable.  Remove the
+# old standalone bundle left behind by pre-3.5 installations.
+rm -f "$APP_DIR/UwUConverterBatch"
+
 chmod +x "$APP_DIR/UwUConverterGUI" 2>/dev/null || true
-chmod +x "$APP_DIR/UwUConverterBatch" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterUpdater" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterBrowserHost" 2>/dev/null || true
 chmod +x "$APP_DIR/UwUConverterInstaller" 2>/dev/null || true
