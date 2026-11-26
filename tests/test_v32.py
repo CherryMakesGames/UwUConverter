@@ -169,10 +169,10 @@ class IntegrationTests(unittest.TestCase):
     def test_version_consistency(self):
         namespace = {}
         exec((ROOT / 'version.py').read_text(), namespace)
-        self.assertEqual(namespace['APP_VERSION'], '3.3.0')
-        self.assertIn('#define MyAppVersion "3.3.0"', (ROOT / 'installer.iss').read_text())
+        self.assertEqual(namespace['APP_VERSION'], '3.5.0')
+        self.assertIn('#define MyAppVersion "3.5.0"', (ROOT / 'installer.iss').read_text())
         from windows_modern_shell.generate_package_manifest import four_part_version
-        self.assertEqual(four_part_version(namespace['APP_VERSION']), '3.3.0.0')
+        self.assertEqual(four_part_version(namespace['APP_VERSION']), '3.5.0.0')
 
     def test_autoclose_success_only(self):
         text = (ROOT / 'archive_progress_ui.py').read_text()

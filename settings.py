@@ -35,6 +35,9 @@ OPERATION_DEFAULTS = {
     "codec_fallback": True,
 }
 
+_DEFAULT_CACHE = None
+_DEFAULT_CACHE_SIGNATURE = None
+
 
 def settings_path():
     if os.name == "nt":
@@ -76,6 +79,31 @@ def load_settings(path=None):
     return config
 
 
+
+
+def _default_settings():
+    """Cache the default settings file until it changes on disk."""
+    global _DEFAULT_CACHE
+    global _DEFAULT_CACHE_SIGNATURE
+
+    path = settings_path()
+
+    try:
+        stat = path.stat()
+        signature = (stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        signature = None
+
+    if (
+        _DEFAULT_CACHE is None
+        or signature != _DEFAULT_CACHE_SIGNATURE
+    ):
+        _DEFAULT_CACHE = load_settings(path)
+        _DEFAULT_CACHE_SIGNATURE = signature
+
+    return _DEFAULT_CACHE
+
+
 def enabled(
     category,
     config=None,
@@ -83,7 +111,7 @@ def enabled(
     config = (
         config
         if config is not None
-        else load_settings()
+        else _default_settings()
     )
 
     return config.getboolean(
@@ -102,7 +130,7 @@ def get_bool(
     config = (
         config
         if config is not None
-        else load_settings()
+        else _default_settings()
     )
 
     return config.getboolean(
@@ -121,7 +149,7 @@ def get_float(
     config = (
         config
         if config is not None
-        else load_settings()
+        else _default_settings()
     )
 
     try:
@@ -159,6 +187,12 @@ def save_settings(
         config.write(
             stream
         )
+
+    if target == settings_path():
+        global _DEFAULT_CACHE
+        global _DEFAULT_CACHE_SIGNATURE
+        _DEFAULT_CACHE = None
+        _DEFAULT_CACHE_SIGNATURE = None
 
     return target
 

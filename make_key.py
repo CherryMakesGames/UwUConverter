@@ -288,16 +288,11 @@ def CleanupLegacyMenus():
 def command_string(convert_type):
     if is_packaged:
         if convert_type == "BATCH_UI_ALL":
-            batch_executable = os.path.join(
-                os.path.dirname(sys.executable),
-                "UwUConverterBatch.exe"
+            return (
+                f'"{sys.executable}" '
+                f'"__BATCH_GUI__" '
+                f'"%1"'
             )
-
-            if os.path.isfile(batch_executable):
-                return (
-                    f'"{batch_executable}" '
-                    f'"%1"'
-                )
 
         return (
             f'"{sys.executable}" '
@@ -308,14 +303,15 @@ def command_string(convert_type):
     pythonw_exe = FindPythonw()
 
     if convert_type == "BATCH_UI_ALL":
-        batch_script = os.path.join(
+        converter_script = os.path.join(
             cwd,
-            "BatchLauncher.py"
+            "Converter.py"
         )
 
         return (
             f'"{pythonw_exe}" '
-            f'"{batch_script}" '
+            f'"{converter_script}" '
+            f'"__BATCH_GUI__" '
             f'"%1"'
         )
 

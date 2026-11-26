@@ -51,6 +51,9 @@ SEVEN_ZIP_LINUX_URLS = {
     ),
 }
 
+_CACHED_7ZIP = None
+
+
 EXTRACT_FORMATS = {
     "7z",
     "zip",
@@ -155,10 +158,19 @@ def _candidate_7zip_paths():
 
 
 def find_7zip():
+    global _CACHED_7ZIP
+
+    if _CACHED_7ZIP is not None:
+        cached = pathlib.Path(_CACHED_7ZIP)
+        if cached.is_file():
+            return str(cached)
+        _CACHED_7ZIP = None
+
     found = _find_existing_7zip()
 
     if found is not None:
-        return found
+        _CACHED_7ZIP = str(found)
+        return _CACHED_7ZIP
 
     if os.name == "nt":
         _install_7zip_windows()
@@ -166,7 +178,8 @@ def find_7zip():
         found = _find_existing_7zip()
 
         if found is not None:
-            return found
+            _CACHED_7ZIP = str(found)
+            return _CACHED_7ZIP
 
     if sys.platform.startswith("linux"):
         _install_7zip_linux()
@@ -174,7 +187,8 @@ def find_7zip():
         found = _find_existing_7zip()
 
         if found is not None:
-            return found
+            _CACHED_7ZIP = str(found)
+            return _CACHED_7ZIP
 
     raise FileNotFoundError(
         "7-Zip was not found and automatic installation failed. "

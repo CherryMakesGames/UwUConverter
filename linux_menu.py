@@ -1115,33 +1115,22 @@ def build_folder_gui_script():
 
 def batch_gui_command():
     if getattr(sys, "frozen", False):
-        executable_folder = pathlib.Path(
-            sys.executable
-        ).resolve().parent
-
-        batch_executable = (
-            executable_folder
-            / "UwUConverterBatch"
-        )
-
-        if batch_executable.is_file():
-            return [str(batch_executable)]
-
         return [
             sys.executable,
             "__BATCH_GUI__",
         ]
 
-    launcher = (
+    converter = (
         pathlib.Path(__file__)
         .resolve()
         .parent
-        / "BatchLauncher.py"
+        / "Converter.py"
     )
 
     return [
         sys.executable,
-        str(launcher),
+        str(converter),
+        "__BATCH_GUI__",
     ]
 
 

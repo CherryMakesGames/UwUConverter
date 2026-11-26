@@ -1,14 +1,5 @@
 import pathlib
 
-from docx import Document
-from odf.opendocument import load as load_odt
-from odf.opendocument import OpenDocumentText
-from odf.text import P
-from odf import teletype
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-
-
 def convert_document(
     file_path,
     output_file_path,
@@ -30,6 +21,8 @@ def convert_document(
         )
 
     elif output_format == "docx":
+        from docx import Document
+
         document = Document()
 
         for line in text.splitlines():
@@ -38,6 +31,9 @@ def convert_document(
         document.save(output_file_path)
 
     elif output_format == "odt":
+        from odf.opendocument import OpenDocumentText
+        from odf.text import P
+
         document = OpenDocumentText()
 
         for line in text.splitlines():
@@ -70,6 +66,8 @@ def read_document_text(file_path):
         )
 
     if extension == ".docx":
+        from docx import Document
+
         document = Document(file_path)
 
         return "\n".join(
@@ -78,6 +76,10 @@ def read_document_text(file_path):
         )
 
     if extension == ".odt":
+        from odf.opendocument import load as load_odt
+        from odf.text import P
+        from odf import teletype
+
         document = load_odt(file_path)
         paragraphs = document.getElementsByType(P)
 
@@ -93,6 +95,9 @@ def read_document_text(file_path):
 
 
 def save_text_as_pdf(text, output_file_path):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
     pdf = canvas.Canvas(
         str(output_file_path),
         pagesize=A4
